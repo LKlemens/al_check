@@ -149,7 +149,7 @@ defmodule CheckEscript do
             {task_name, "sh",
              [
                "-c",
-               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix test #{test_path} --partitions #{partitions} test/bet_stack/accounts/"
+               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix test #{test_path} --partitions #{partitions}"
              ], partition, partitions}
           end
 
@@ -880,4 +880,3 @@ defmodule CheckEscript do
     if test_procs > 0, do: test_procs, else: 1
   end
 end
-
