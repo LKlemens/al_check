@@ -46,12 +46,17 @@ defmodule CheckEscript do
 
   ## Auto-fix workflow
 
-  Credo output is stored in check/ directory for later use with --fix:
+  Format and credo failures are tracked in check/ directory for later use with --fix:
 
-      scripts/check --only credo    # Run checks and store output
-      scripts/check --fix           # Apply fixes from stored output
+      scripts/check --only format,credo  # Run checks and store failures
+      scripts/check --fix                # Apply fixes from stored failures
+
+  The --fix command will:
+  - Check if format failed previously (check/.format_failed marker) and run mix format
+  - Apply credo fixes from stored output files (check/credo.txt, check/credo_strict.txt)
   """
 
+  @spec main([String.t()]) :: :ok
   def main(args) do
     {opts, mock_mode, fix_mode} = parse_args(args)
 
@@ -293,6 +298,9 @@ defmodule CheckEscript do
     # save credo outputs to files
     save_credo_outputs(results)
 
+    # save format failure marker
+    save_format_failure_marker(results)
+
     # merge test partition outputs into single file
     merge_partition_outputs(results)
 
@@ -331,6 +339,22 @@ defmodule CheckEscript do
 
       File.write!(filename, output)
     end)
+  end
+
+  defp save_format_failure_marker(results) do
+    File.mkdir_p!("check")
+
+    format_failed? =
+      Enum.any?(results, fn {name, status, _output} ->
+        name == "Formatting" and status != 0
+      end)
+
+    if format_failed? do
+      File.write!("check/.format_failed", "")
+    else
+      # delete marker if format passed
+      File.rm("check/.format_failed")
+    end
   end
 
   defp print_failure_details(failed_checks) do
@@ -573,8 +597,33 @@ defmodule CheckEscript do
     end
   end
 
+  defp check_and_fix_format do
+    if File.exists?("check/.format_failed") do
+      IO.puts([IO.ANSI.format([:red, "✗ Format check failed previously"])])
+      IO.puts([IO.ANSI.format([:yellow, "Running mix format to fix..."])])
+
+      {output, status} = System.cmd("mix", ["format"], stderr_to_stdout: true)
+
+      if status == 0 do
+        File.rm("check/.format_failed")
+        IO.puts([IO.ANSI.format([:green, "✓ Format fixed successfully"])])
+      else
+        IO.puts(output)
+        IO.puts([IO.ANSI.format([:red, "✗ Format fix failed"])])
+        System.halt(1)
+      end
+    else
+      IO.puts([IO.ANSI.format([:green, "✓ Format check passed"])])
+    end
+  end
+
   defp apply_fixes_from_stored_output do
-    IO.puts("Reading stored credo outputs from check/...\n")
+    IO.puts("Checking for failures to fix...\n")
+
+    # check and fix format issues first
+    check_and_fix_format()
+
+    IO.puts("\nReading stored credo outputs from check/...\n")
 
     # read credo output files
     files =
@@ -831,3 +880,4 @@ defmodule CheckEscript do
     if test_procs > 0, do: test_procs, else: 1
   end
 end
+
