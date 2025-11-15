@@ -52,14 +52,14 @@ defmodule AlCheck.MixProject do
         "GitHub" => @source_url
       },
       maintainers: ["Klemens Lukaszczyk"],
-      files: ~w(lib scripts .formatter.exs mix.exs README.md LICENSE)
+      files: ~w(lib mix.exs README.md LICENSE)
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"],
+      extras: ["README.md", "LICENSE"],
       source_ref: "v#{@version}",
       source_url: @source_url
     ]
