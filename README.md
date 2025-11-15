@@ -23,11 +23,13 @@ def deps do
 end
 ```
 
-Then run:
+Then install globally:
 
 ```bash
 mix deps.get
-mix escript.install
+mix check.install
+# if u use asdf
+asdf reshim
 ```
 
 ## Usage
