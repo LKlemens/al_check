@@ -1,17 +1,25 @@
 defmodule AlCheck.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @source_url "https://github.com/LKlemens/al_check"
+
   def project do
     [
       app: :al_check,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       escript: [
         main_module: CheckEscript,
-        path: "scripts/check",
+        path: "scripts/check"
       ],
+      description: description(),
+      package: package(),
+      name: "AlCheck",
+      source_url: @source_url,
+      docs: docs()
     ]
   end
 
@@ -25,8 +33,35 @@ defmodule AlCheck.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false}
+    ]
+  end
+
+  defp description do
+    """
+    A parallel code quality checker for Elixir projects. Runs format, compile,
+    credo, dialyzer, and tests concurrently with smart test partitioning.
+    """
+  end
+
+  defp package do
+    [
+      name: "al_check",
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => @source_url
+      },
+      maintainers: ["Klemens Lukaszczyk"],
+      files: ~w(lib scripts .formatter.exs mix.exs README.md LICENSE)
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md"],
+      source_ref: "v#{@version}",
+      source_url: @source_url
     ]
   end
 end
