@@ -42,20 +42,20 @@ defmodule CheckEscript do
 
   When tests fail, failed test locations are automatically saved to check/failed_tests.txt:
 
-      scripts/check --only test     # Run tests and save failures
-      cat check/failed_tests.txt # View failed tests
-      scripts/check --failed        # Re-run only the failed tests
+      check --only test     # Run tests and save failures
+      cat .check/failed_tests.txt # View failed tests
+      check --failed        # Re-run only the failed tests
 
   ## Auto-fix workflow
 
-  Format and credo failures are tracked in check/ directory for later use with --fix:
+  Format and credo failures are tracked in .check/ directory for later use with --fix:
 
-      scripts/check --only format,credo  # Run checks and store failures
-      scripts/check --fix                # Apply fixes from stored failures
+      check --only format,credo  # Run checks and store failures
+      check --fix                # Apply fixes from stored failures
 
   The --fix command will:
-  - Check if format failed previously (check/.format_failed marker) and run mix format
-  - Apply credo fixes from stored output files (check/credo.txt, check/credo_strict.txt)
+  - Check if format failed previously (.check/.format_failed marker) and run mix format
+  - Apply credo fixes from stored output files (.check/credo.txt, .check/credo_strict.txt)
   """
 
   @spec main([String.t()]) :: :ok
@@ -344,7 +344,7 @@ defmodule CheckEscript do
   end
 
   defp save_credo_outputs(results) do
-    File.mkdir_p!("check")
+    File.mkdir_p!(".check")
 
     results
     |> Enum.filter(fn {name, _status, _output} ->
@@ -353,8 +353,8 @@ defmodule CheckEscript do
     |> Enum.each(fn {name, _status, output} ->
       filename =
         case name do
-          "Credo" -> "check/credo.txt"
-          "Credo Strict" -> "check/credo_strict.txt"
+          "Credo" -> ".check/credo.txt"
+          "Credo Strict" -> ".check/credo_strict.txt"
         end
 
       File.write!(filename, output)
@@ -362,7 +362,7 @@ defmodule CheckEscript do
   end
 
   defp save_format_failure_marker(results) do
-    File.mkdir_p!("check")
+    File.mkdir_p!(".check")
 
     format_failed? =
       Enum.any?(results, fn {name, status, _output} ->
@@ -370,10 +370,10 @@ defmodule CheckEscript do
       end)
 
     if format_failed? do
-      File.write!("check/.format_failed", "")
+      File.write!(".check/.format_failed", "")
     else
       # delete marker if format passed
-      File.rm("check/.format_failed")
+      File.rm(".check/.format_failed")
     end
   end
 
@@ -463,11 +463,11 @@ defmodule CheckEscript do
             ]
           end)
 
-      File.mkdir_p!("check")
-      File.write!("check/check_tests.txt", Enum.join(content, "\n"))
+      File.mkdir_p!(".check")
+      File.write!(".check/check_tests.txt", Enum.join(content, "\n"))
 
       # keep partition files for reference - users may want to review individual partition outputs
-      # partition files: check/test_partition_1.txt, check/test_partition_2.txt, etc.
+      # partition files: .check/test_partition_1.txt, .check/test_partition_2.txt, etc.
     end
   end
 
@@ -475,12 +475,12 @@ defmodule CheckEscript do
     # look for ExUnit summary line like "108 tests, 1 failure, 107 excluded"
     case Regex.run(~r/(\d+ tests?, \d+ failures?(, \d+ excluded)?.*)/m, output) do
       [_, summary | _] -> summary
-      nil -> "See check/check_tests.txt for details"
+      nil -> "See .check/check_tests.txt for details"
     end
   end
 
   defp extract_test_summary(_output) do
-    "See check/check_tests.txt for details"
+    "See .check/check_tests.txt for details"
   end
 
   defp run_check(cmd, args) do
@@ -499,8 +499,8 @@ defmodule CheckEscript do
       end)
 
     # create check directory and open file for real-time streaming
-    File.mkdir_p!("check")
-    output_file = "check/test_partition_#{partition}.txt"
+    File.mkdir_p!(".check")
+    output_file = ".check/test_partition_#{partition}.txt"
     file_handle = File.open!(output_file, [:write, :utf8])
 
     # run command and collect output with streaming
@@ -626,14 +626,14 @@ defmodule CheckEscript do
   end
 
   defp check_and_fix_format do
-    if File.exists?("check/.format_failed") do
+    if File.exists?(".check/.format_failed") do
       IO.puts([IO.ANSI.format([:red, "✗ Format check failed previously"])])
       IO.puts([IO.ANSI.format([:yellow, "Running mix format to fix..."])])
 
       {output, status} = System.cmd("mix", ["format"], stderr_to_stdout: true)
 
       if status == 0 do
-        File.rm("check/.format_failed")
+        File.rm(".check/.format_failed")
         IO.puts([IO.ANSI.format([:green, "✓ Format fixed successfully"])])
       else
         IO.puts(output)
@@ -655,7 +655,7 @@ defmodule CheckEscript do
 
     # read credo output files
     files =
-      ["check/credo.txt", "check/credo_strict.txt"]
+      [".check/credo.txt", ".check/credo_strict.txt"]
       |> Enum.filter(&File.exists?/1)
       |> Enum.flat_map(fn file ->
         content = File.read!(file)
@@ -668,7 +668,7 @@ defmodule CheckEscript do
       IO.puts([
         IO.ANSI.format([
           :yellow,
-          "No credo errors found. Maybe rerun 'scripts/check --only credo'."
+          "No credo errors found. Maybe rerun 'check --only credo'."
         ]),
         IO.ANSI.reset()
       ])
@@ -707,8 +707,8 @@ defmodule CheckEscript do
   end
 
   defp extract_failed_tests do
-    if File.exists?("check/check_tests.txt") do
-      content = File.read!("check/check_tests.txt")
+    if File.exists?(".check/check_tests.txt") do
+      content = File.read!(".check/check_tests.txt")
 
       # extract actual test failures
       # match patterns like:
@@ -739,19 +739,19 @@ defmodule CheckEscript do
 
   defp save_failed_tests(failed_tests) do
     if Enum.any?(failed_tests) do
-      File.mkdir_p!("check")
+      File.mkdir_p!(".check")
       content = Enum.join(failed_tests, "\n")
-      File.write!("check/failed_tests.txt", content)
-      IO.puts([IO.ANSI.format([:yellow, "\nFailed tests saved to check/failed_tests.txt"])])
+      File.write!(".check/failed_tests.txt", content)
+      IO.puts([IO.ANSI.format([:yellow, "\nFailed tests saved to .check/failed_tests.txt"])])
     end
   end
 
   defp run_failed_tests do
-    failed_tests_file = "check/failed_tests.txt"
+    failed_tests_file = ".check/failed_tests.txt"
 
     unless File.exists?(failed_tests_file) do
       IO.puts([
-        IO.ANSI.format([:red, "No failed tests found. Run 'scripts/check --only test' first."]),
+        IO.ANSI.format([:red, "No failed tests found. Run 'check --only test' first."]),
         IO.ANSI.reset()
       ])
 
@@ -802,14 +802,14 @@ defmodule CheckEscript do
 
   defp watch_partition_files do
     # check if partition files exist
-    partition_files = Path.wildcard("check/test_partition_*.txt")
+    partition_files = Path.wildcard(".check/test_partition_*.txt")
 
     if Enum.empty?(partition_files) do
       IO.puts([
         IO.ANSI.format([
           :yellow,
-          "No test partition files found in check/ directory.\n",
-          "Run tests first with: scripts/check --only test"
+          "No test partition files found in .check/ directory.\n",
+          "Run tests first with: check --only test"
         ]),
         IO.ANSI.reset()
       ])
@@ -869,13 +869,13 @@ defmodule CheckEscript do
   end
 
   defp save_test_args(test_args) do
-    File.mkdir_p!("check")
+    File.mkdir_p!(".check")
     test_flags = test_args || "--warnings-as-errors"
-    File.write!("check/test_args.txt", test_flags)
+    File.write!(".check/test_args.txt", test_flags)
   end
 
   defp read_saved_test_args do
-    case File.read("check/test_args.txt") do
+    case File.read(".check/test_args.txt") do
       {:ok, content} -> content |> String.trim() |> String.split()
       {:error, _} -> ["--warnings-as-errors"]
     end
