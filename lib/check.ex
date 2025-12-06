@@ -149,7 +149,7 @@ defmodule CheckEscript do
             {task_name, "sh",
              [
                "-c",
-               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix test #{test_path} --warning-as-errors --partitions #{partitions}"
+               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix test #{test_path} --warnings-as-errors --partitions #{partitions}"
              ], partition, partitions}
           end
 
@@ -500,7 +500,15 @@ defmodule CheckEscript do
     # signal updater to stop
     send(updater_pid, :stop)
 
-    {status, output}
+    # fail if warnings detected in output (even if tests passed)
+    final_status =
+      if status == 0 and detect_warnings_in_output(output) do
+        1
+      else
+        status
+      end
+
+    {final_status, output}
   end
 
   defp collect_port_output(port, acc, dot_counter_pid, partition, file_handle) do
@@ -682,16 +690,31 @@ defmodule CheckEscript do
     if File.exists?("check/check_tests.txt") do
       content = File.read!("check/check_tests.txt")
 
+      # extract actual test failures
       # match patterns like:
       #   1) test description (Module.Name)
       #      test/path/to/file.exs:123
-      ~r/\d+\)\s+test\s+.*?\n\s+(test\/[^\s:]+\.exs):(\d+)/m
-      |> Regex.scan(content)
-      |> Enum.map(fn [_, file, line] -> "#{file}:#{line}" end)
-      |> Enum.uniq()
+      failures =
+        ~r/\d+\)\s+test\s+.*?\n\s+(test\/[^\s:]+\.exs):(\d+)/m
+        |> Regex.scan(content)
+        |> Enum.map(fn [_, file, line] -> "#{file}:#{line}" end)
+
+      # extract warning locations
+      warnings = extract_warning_locations(content)
+
+      # combine and deduplicate
+      (failures ++ warnings) |> Enum.uniq()
     else
       []
     end
+  end
+
+  defp extract_warning_locations(content) do
+    # match warning location lines like:
+    #   └─ test/path/to/file.exs:16:5: ModuleName."test name"/1
+    ~r/└─ (test\/[^\s:]+\.exs):(\d+)/m
+    |> Regex.scan(content)
+    |> Enum.map(fn [_, file, line] -> "#{file}:#{line}" end)
   end
 
   defp save_failed_tests(failed_tests) do
@@ -734,7 +757,7 @@ defmodule CheckEscript do
           :binary,
           :exit_status,
           :stderr_to_stdout,
-          args: ["test", "--warning-as-errors" | failed_tests]
+          args: ["test", "--warnings-as-errors" | failed_tests]
         ])
 
       status = stream_port_output(port)
@@ -878,5 +901,9 @@ defmodule CheckEscript do
     schedulers = :erlang.system_info(:schedulers_online)
     test_procs = floor(schedulers / partitions)
     if test_procs > 0, do: test_procs, else: 1
+  end
+
+  defp detect_warnings_in_output(output) do
+    String.contains?(output, "warning:")
   end
 end
