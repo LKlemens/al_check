@@ -13,6 +13,7 @@ defmodule CheckEscript do
       scripts/check --fix                          # Apply fixes from stored credo output
       scripts/check --failed                       # Re-run only failed tests from previous run
       scripts/check --watch                        # Monitor test partition files in real-time
+      scripts/check --test-args="--exclude slow"   # Replace default --warnings-as-errors with custom args
       scripts/check mock                           # Run with mock commands for testing
       scripts/check mock --only format,credo       # Mock mode with credo (runs both basic & strict)
 
@@ -77,8 +78,10 @@ defmodule CheckEscript do
       true ->
         partitions = opts[:partitions] || 3
         test_dir = opts[:dir]
-        all_tasks = define_tasks(mock_mode, partitions, test_dir)
+        test_args = opts[:test_args]
+        all_tasks = define_tasks(mock_mode, partitions, test_dir, test_args)
         tasks = select_tasks(all_tasks, opts, partitions)
+        if has_test_tasks?(tasks), do: save_test_args(test_args)
         {results, total_seconds} = run_checks(tasks)
         print_summary(results, total_seconds, tasks)
     end
@@ -94,7 +97,8 @@ defmodule CheckEscript do
           partitions: :integer,
           failed: :boolean,
           dir: :string,
-          watch: :boolean
+          watch: :boolean,
+          test_args: :string
         ]
       )
 
@@ -103,7 +107,7 @@ defmodule CheckEscript do
     {opts, mock_mode, fix_mode}
   end
 
-  defp define_tasks(mock_mode, partitions, test_dir) do
+  defp define_tasks(mock_mode, partitions, test_dir, test_args) do
     base_tasks =
       if mock_mode do
         # mock tasks for testing
@@ -131,6 +135,8 @@ defmodule CheckEscript do
 
     test_procs = test_procs(partitions)
     test_path = test_dir || ""
+    # use --warnings-as-errors by default, but allow override via --test-args
+    test_flags = test_args || "--warnings-as-errors"
 
     # generate test partition tasks
     test_tasks =
@@ -149,7 +155,7 @@ defmodule CheckEscript do
             {task_name, "sh",
              [
                "-c",
-               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix test #{test_path} --warnings-as-errors --partitions #{partitions}"
+               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix test #{test_path} #{test_flags} --partitions #{partitions}"
              ], partition, partitions}
           end
 
@@ -752,12 +758,14 @@ defmodule CheckEscript do
       IO.puts("Running #{length(failed_tests)} failed test(s)...\n")
 
       # run mix test with all failed test files, streaming output
+      test_args = read_saved_test_args()
+
       port =
         Port.open({:spawn_executable, System.find_executable("mix")}, [
           :binary,
           :exit_status,
           :stderr_to_stdout,
-          args: ["test", "--warnings-as-errors" | failed_tests]
+          args: ["test"] ++ test_args ++ failed_tests
         ])
 
       status = stream_port_output(port)
@@ -844,6 +852,19 @@ defmodule CheckEscript do
       name = elem(task, 0)
       String.starts_with?(name, "Tests (")
     end)
+  end
+
+  defp save_test_args(test_args) do
+    File.mkdir_p!("check")
+    test_flags = test_args || "--warnings-as-errors"
+    File.write!("check/test_args.txt", test_flags)
+  end
+
+  defp read_saved_test_args do
+    case File.read("check/test_args.txt") do
+      {:ok, content} -> content |> String.trim() |> String.split()
+      {:error, _} -> ["--warnings-as-errors"]
+    end
   end
 
   defp update_task_line(index, name, status, total_tasks, test_counts) do
