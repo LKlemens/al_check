@@ -801,7 +801,7 @@ defmodule CheckEscript do
       # run mix test with all failed test files, streaming output
       test_args = read_saved_test_args()
       repeat_args = if repeat, do: ["--repeat-until-failure", to_string(repeat)], else: []
-      all_args = ["test"] ++ test_args ++ repeat_args ++ failed_tests
+      all_args = ["test"] ++ test_args ++ repeat_args ++ ["failed_tests"]
       test_cmd = "mix " <> Enum.join(all_args, " ")
       IO.puts([IO.ANSI.format([:cyan, "Test command: #{test_cmd}\n"])])
 
@@ -810,7 +810,7 @@ defmodule CheckEscript do
           :binary,
           :exit_status,
           :stderr_to_stdout,
-          args: all_args
+          args: all_args ++ failed_tests
         ])
 
       status = stream_port_output(port)
