@@ -15,9 +15,7 @@ defmodule CheckEscript do
       check --failed                       # Re-run only failed tests from previous run
       check --watch                        # Monitor test partition files in real-time
       check --test-args "--exclude slow"   # Replace default --warnings-as-errors with custom args
-      check --repeat 10                    # Run tests with --repeat-until-failure 10
-      check mock                           # Run with mock commands for testing
-      check mock --only format,credo       # Mock mode with credo (runs both basic & strict)
+      check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
 
   ## Available checks
 
@@ -96,7 +94,7 @@ defmodule CheckEscript do
   end
 
   defp parse_args(args) do
-    {opts, remaining_args, _} =
+    {opts, remaining_args, invalid} =
       OptionParser.parse(args,
         strict: [
           only: :string,
@@ -115,7 +113,16 @@ defmodule CheckEscript do
 
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
+    repeat = resolve_repeat(opts[:repeat], invalid)
+    opts = Keyword.put(opts, :repeat, repeat)
     {opts, mock_mode, fix_mode}
+  end
+
+  defp resolve_repeat(repeat, _invalid) when is_integer(repeat), do: repeat
+
+  defp resolve_repeat(nil, invalid) do
+    invalid_switches = Enum.map(invalid, fn {switch, _} -> switch end)
+    if "--repeat" in invalid_switches, do: 100, else: nil
   end
 
   defp print_help do
