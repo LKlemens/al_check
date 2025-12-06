@@ -4,18 +4,19 @@ defmodule CheckEscript do
 
   ## Usage
 
-      scripts/check                                # Run all checks
-      scripts/check --fast                         # Run only fast checks (format, compile, credo)
-      scripts/check --only format,test             # Run only format and test
-      scripts/check --only credo                   # Run credo and credo_strict
-      scripts/check --partitions 2                 # Run tests with 2 partitions (default: 3)
-      scripts/check --dir test/bet_stack/markets/  # Run tests only from specific directory
-      scripts/check --fix                          # Apply fixes from stored credo output
-      scripts/check --failed                       # Re-run only failed tests from previous run
-      scripts/check --watch                        # Monitor test partition files in real-time
-      scripts/check --test-args="--exclude slow"   # Replace default --warnings-as-errors with custom args
-      scripts/check mock                           # Run with mock commands for testing
-      scripts/check mock --only format,credo       # Mock mode with credo (runs both basic & strict)
+      check                                # Run all checks
+      check --help/-h                      # Show this help message
+      check --fast                         # Run only fast checks (format, compile, credo)
+      check --only format,test             # Run only format and test
+      check --only credo                   # Run credo and credo_strict
+      check --partitions 2                 # Run tests with 2 partitions (default: 3)
+      check --dir test/dir                 # Run tests only from specific directory
+      check --fix                          # Apply fixes from stored credo output
+      check --failed                       # Re-run only failed tests from previous run
+      check --watch                        # Monitor test partition files in real-time
+      check --test-args="--exclude slow"   # Replace default --warnings-as-errors with custom args
+      check mock                           # Run with mock commands for testing
+      check mock --only format,credo       # Mock mode with credo (runs both basic & strict)
 
   ## Available checks
 
@@ -62,6 +63,10 @@ defmodule CheckEscript do
     {opts, mock_mode, fix_mode} = parse_args(args)
 
     cond do
+      # if --help flag, print help and exit
+      opts[:help] ->
+        print_help()
+
       # if --watch flag, monitor test partition files
       opts[:watch] ->
         watch_partition_files()
@@ -98,13 +103,22 @@ defmodule CheckEscript do
           failed: :boolean,
           dir: :string,
           watch: :boolean,
-          test_args: :string
-        ]
+          test_args: :string,
+          help: :boolean
+        ],
+        aliases: [h: :help]
       )
 
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
     {opts, mock_mode, fix_mode}
+  end
+
+  defp print_help do
+    @moduledoc
+    |> String.split("## ")
+    |> Enum.find(&String.starts_with?(&1, "Usage"))
+    |> then(&IO.puts("## " <> &1))
   end
 
   defp define_tasks(mock_mode, partitions, test_dir, test_args) do

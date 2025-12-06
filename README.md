@@ -39,33 +39,33 @@ asdf reshim
 Run all checks:
 
 ```bash
-scripts/check
+check
 ```
 
 ### Common Options
 
 ```bash
 # Run only fast checks (format, compile, credo)
-scripts/check --fast
+check --fast
 
 # Run specific checks only
-scripts/check --only format,test
-scripts/check --only credo
+check --only format,test
+check --only credo
 
 # Run tests with custom partition count
-scripts/check --partitions 4
+check --partitions 4
 
 # Run tests from specific directory
-scripts/check --dir test/my_app/feature/
+check --dir test/my_app/feature/
 
 # Re-run only failed tests from previous run
-scripts/check --failed
+check --failed
 
 # Apply auto-fixes from stored credo output
-scripts/check --fix
+check --fix
 
 # Monitor test partition files in real-time
-scripts/check --watch
+check --watch
 ```
 
 ### Available Checks
@@ -85,9 +85,9 @@ scripts/check --watch
 When tests fail, failed test locations are automatically saved:
 
 ```bash
-scripts/check --only test     # Run tests and save failures
+check --only test     # Run tests and save failures
 cat check/failed_tests.txt    # View failed tests
-scripts/check --failed        # Re-run only the failed tests
+check --failed        # Re-run only the failed tests
 ```
 
 ### Auto-fix Workflow
@@ -95,8 +95,8 @@ scripts/check --failed        # Re-run only the failed tests
 Credo output is stored for later use with `--fix`:
 
 ```bash
-scripts/check --only credo    # Run checks and store output
-scripts/check --fix           # Apply fixes from stored output
+check --only credo    # Run checks and store output
+check --fix           # Apply fixes from stored output
 ```
 
 ### Test Partitioning
@@ -105,7 +105,7 @@ Tests run in parallel partitions (default: 3). Each partition uses its own datab
 Customize based on your CPU cores:
 
 ```bash
-scripts/check --partitions 3  # Run with 3 partitions
+check --partitions 3  # Run with 3 partitions
 ```
 
 ## Output Files
