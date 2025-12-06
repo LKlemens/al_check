@@ -14,7 +14,7 @@ defmodule CheckEscript do
       check --fix                          # Apply fixes from stored credo output
       check --failed                       # Re-run only failed tests from previous run
       check --watch                        # Monitor test partition files in real-time
-      check --test-args="--exclude slow"   # Replace default --warnings-as-errors with custom args
+      check --test-args "--exclude slow"   # Replace default --warnings-as-errors with custom args
       check --repeat 10                    # Run tests with --repeat-until-failure 10
       check mock                           # Run with mock commands for testing
       check mock --only format,credo       # Mock mode with credo (runs both basic & strict)
@@ -89,7 +89,8 @@ defmodule CheckEscript do
         all_tasks = define_tasks(mock_mode, partitions, test_dir, test_args, repeat)
         tasks = select_tasks(all_tasks, opts, partitions)
         if has_test_tasks?(tasks), do: save_test_args(test_args)
-        {results, total_seconds} = run_checks(tasks)
+        test_cmd = build_test_cmd(test_dir, test_args, repeat, partitions)
+        {results, total_seconds} = run_checks(tasks, repeat, test_cmd)
         print_summary(results, total_seconds, tasks)
     end
   end
@@ -236,8 +237,22 @@ defmodule CheckEscript do
     tasks
   end
 
-  defp run_checks(tasks) do
+  defp build_test_cmd(test_dir, test_args, repeat, partitions) do
+    parts = ["mix test"]
+    parts = if test_dir, do: parts ++ [test_dir], else: parts
+    parts = parts ++ [test_args || "--warnings-as-errors"]
+    parts = if repeat, do: parts ++ ["--repeat-until-failure #{repeat}"], else: parts
+    parts = parts ++ ["--partitions #{partitions}"]
+    Enum.join(parts, " ")
+  end
+
+  defp run_checks(tasks, _repeat, test_cmd) do
     IO.puts("Running code quality checks in parallel...\n")
+
+    # print test command if test tasks are present
+    if has_test_tasks?(tasks) do
+      IO.puts([IO.ANSI.format([:cyan, "Test command: #{test_cmd}\n"])])
+    end
 
     # show scheduler information
     schedulers = :erlang.system_info(:schedulers_online)
@@ -779,13 +794,16 @@ defmodule CheckEscript do
       # run mix test with all failed test files, streaming output
       test_args = read_saved_test_args()
       repeat_args = if repeat, do: ["--repeat-until-failure", to_string(repeat)], else: []
+      all_args = ["test"] ++ test_args ++ repeat_args ++ failed_tests
+      test_cmd = "mix " <> Enum.join(all_args, " ")
+      IO.puts([IO.ANSI.format([:cyan, "Test command: #{test_cmd}\n"])])
 
       port =
         Port.open({:spawn_executable, System.find_executable("mix")}, [
           :binary,
           :exit_status,
           :stderr_to_stdout,
-          args: ["test"] ++ test_args ++ repeat_args ++ failed_tests
+          args: all_args
         ])
 
       status = stream_port_output(port)
