@@ -15,6 +15,7 @@ defmodule CheckEscript do
       check --failed                       # Re-run only failed tests from previous run
       check --watch                        # Monitor test partition files in real-time
       check --test-args="--exclude slow"   # Replace default --warnings-as-errors with custom args
+      check --repeat 10                    # Run tests with --repeat-until-failure 10
       check mock                           # Run with mock commands for testing
       check mock --only format,credo       # Mock mode with credo (runs both basic & strict)
 
@@ -73,7 +74,7 @@ defmodule CheckEscript do
 
       # if --failed flag, run failed tests from previous run
       opts[:failed] ->
-        run_failed_tests()
+        run_failed_tests(opts[:repeat])
 
       # if --fix flag, read stored outputs and apply fixes
       fix_mode ->
@@ -84,7 +85,8 @@ defmodule CheckEscript do
         partitions = opts[:partitions] || 3
         test_dir = opts[:dir]
         test_args = opts[:test_args]
-        all_tasks = define_tasks(mock_mode, partitions, test_dir, test_args)
+        repeat = opts[:repeat]
+        all_tasks = define_tasks(mock_mode, partitions, test_dir, test_args, repeat)
         tasks = select_tasks(all_tasks, opts, partitions)
         if has_test_tasks?(tasks), do: save_test_args(test_args)
         {results, total_seconds} = run_checks(tasks)
@@ -104,6 +106,7 @@ defmodule CheckEscript do
           dir: :string,
           watch: :boolean,
           test_args: :string,
+          repeat: :integer,
           help: :boolean
         ],
         aliases: [h: :help]
@@ -121,7 +124,7 @@ defmodule CheckEscript do
     |> then(&IO.puts("## " <> &1))
   end
 
-  defp define_tasks(mock_mode, partitions, test_dir, test_args) do
+  defp define_tasks(mock_mode, partitions, test_dir, test_args, repeat) do
     base_tasks =
       if mock_mode do
         # mock tasks for testing
@@ -150,7 +153,9 @@ defmodule CheckEscript do
     test_procs = test_procs(partitions)
     test_path = test_dir || ""
     # use --warnings-as-errors by default, but allow override via --test-args
-    test_flags = test_args || "--warnings-as-errors"
+    base_flags = test_args || "--warnings-as-errors"
+    repeat_flags = if repeat, do: " --repeat-until-failure #{repeat}", else: ""
+    test_flags = base_flags <> repeat_flags
 
     # generate test partition tasks
     test_tasks =
@@ -746,7 +751,7 @@ defmodule CheckEscript do
     end
   end
 
-  defp run_failed_tests do
+  defp run_failed_tests(repeat) do
     failed_tests_file = ".check/failed_tests.txt"
 
     unless File.exists?(failed_tests_file) do
@@ -773,13 +778,14 @@ defmodule CheckEscript do
 
       # run mix test with all failed test files, streaming output
       test_args = read_saved_test_args()
+      repeat_args = if repeat, do: ["--repeat-until-failure", to_string(repeat)], else: []
 
       port =
         Port.open({:spawn_executable, System.find_executable("mix")}, [
           :binary,
           :exit_status,
           :stderr_to_stdout,
-          args: ["test"] ++ test_args ++ failed_tests
+          args: ["test"] ++ test_args ++ repeat_args ++ failed_tests
         ])
 
       status = stream_port_output(port)
