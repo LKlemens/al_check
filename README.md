@@ -118,6 +118,35 @@ AlCheck creates a `check/` directory with the following files:
 - `check/test_partition_N.txt` - Individual partition outputs
 - `check/failed_tests.txt` - List of failed test locations
 
+## Configuration
+
+Create a `.check.json` in your project root to customize behavior:
+
+```json
+{
+  "fast": ["format", "compile", "compile_test", "credo"],
+  "partitions": 3,
+  "max_concurrency": 10,
+  "test_args": "--warnings-as-errors",
+  "default_repeat": 100,
+  "coverage": false,
+  "checks": {
+    "format": {"name": "Formatting", "run": "mix format --check-formatted"},
+    "sobelow": {"name": "Security", "run": "mix sobelow --config"}
+  }
+}
+```
+
+All fields are optional. CLI flags override config values.
+
+Override the config path via the `CHECK_CONFIG` environment variable.
+
+### Custom checks
+
+Each check is defined with a `run` string (the shell command to execute) and an optional `name` for display. If `name` is omitted, it defaults to a capitalized version of the key (e.g. `"compile_test"` → `"Compile Test"`).
+
+When `checks` is provided, it replaces all built-in checks (test partitions are always added).
+
 ## Requirements
 
 - Elixir ~> 1.18

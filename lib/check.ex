@@ -55,11 +55,54 @@ defmodule CheckEscript do
   The --fix command will:
   - Check if format failed previously (.check/.format_failed marker) and run mix format
   - Apply credo fixes from stored output files (.check/credo.txt, .check/credo_strict.txt)
+
+  ## Configuration file
+
+  Create a `.check.json` in your project root to customize behavior.
+  Override the path via the `CHECK_CONFIG` environment variable.
+
+      {
+        "fast": ["format", "compile", "compile_test", "credo"],
+        "partitions": 3,
+        "max_concurrency": 10,
+        "test_args": "--warnings-as-errors",
+        "default_repeat": 100,
+        "coverage": false,
+        "checks": {
+          "format": {"name": "Formatting", "run": "mix format --check-formatted"},
+          "sobelow": {"name": "Security", "run": "mix sobelow --config"}
+        }
+      }
+
+  Name defaults to a capitalized version of the key (e.g. "compile_test" → "Compile Test").
+
+  All fields are optional. CLI flags override config values.
+  When `checks` is provided, it replaces all built-in checks (test partitions are always added).
   """
+
+  @default_checks %{
+    "format" => %{"name" => "Formatting", "run" => "mix format --check-formatted"},
+    "compile" => %{"name" => "Compile", "run" => "mix compile --warnings-as-errors"},
+    "compile_test" => %{
+      "name" => "Compile (test)",
+      "run" => "MIX_ENV=test mix compile --warnings-as-errors"
+    },
+    "dialyzer" => %{"name" => "Dialyzer", "run" => "mix dialyzer"},
+    "credo" => %{"name" => "Credo", "run" => "mix credo --all"},
+    "credo_strict" => %{
+      "name" => "Credo Strict",
+      "run" => "mix credo --strict --only readability --all"
+    }
+  }
+
+  @default_fast ["format", "compile", "compile_test", "credo", "credo_strict"]
 
   @spec main([String.t()]) :: :ok
   def main(args) do
-    {opts, mock_mode, fix_mode} = parse_args(args)
+    {opts, mock_mode, fix_mode, invalid} = parse_args(args)
+    config = load_config()
+    repeat = resolve_repeat(opts[:repeat], invalid, config)
+    opts = Keyword.put(opts, :repeat, repeat)
 
     cond do
       # if --help flag, print help and exit
@@ -80,16 +123,47 @@ defmodule CheckEscript do
 
       # normal check flow
       true ->
-        partitions = opts[:partitions] || 3
+        partitions = opts[:partitions] || config["partitions"] || 3
+        max_concurrency = config["max_concurrency"] || 10
         test_dir = opts[:dir]
-        test_args = opts[:test_args]
+        test_args = opts[:test_args] || config["test_args"]
         repeat = opts[:repeat]
-        all_tasks = define_tasks(mock_mode, partitions, test_dir, test_args, repeat)
-        tasks = select_tasks(all_tasks, opts, partitions)
+        coverage = config["coverage"] || false
+
+        all_tasks =
+          define_tasks(mock_mode, partitions, test_dir, test_args, repeat, config, coverage)
+
+        tasks = select_tasks(all_tasks, opts, partitions, config)
         if has_test_tasks?(tasks), do: save_test_args(test_args)
-        test_cmd = build_test_cmd(test_dir, test_args, repeat, partitions)
-        {results, total_seconds} = run_checks(tasks, repeat, test_cmd)
+        test_cmd = build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
+        {results, total_seconds} = run_checks(tasks, repeat, test_cmd, max_concurrency)
         print_summary(results, total_seconds, tasks)
+    end
+  end
+
+  defp load_config do
+    config_path =
+      case System.get_env("CHECK_CONFIG") do
+        nil -> Path.join(File.cwd!(), ".check.json")
+        "" -> Path.join(File.cwd!(), ".check.json")
+        path -> path
+      end
+
+    if File.exists?(config_path) do
+      case config_path |> File.read!() |> Jason.decode() do
+        {:ok, config} when is_map(config) ->
+          config
+
+        {:ok, _} ->
+          IO.puts(:stderr, "Warning: #{config_path} must contain a JSON object, ignoring config")
+          %{}
+
+        {:error, reason} ->
+          IO.puts(:stderr, "Warning: Failed to parse #{config_path}: #{inspect(reason)}")
+          %{}
+      end
+    else
+      %{}
     end
   end
 
@@ -113,16 +187,15 @@ defmodule CheckEscript do
 
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
-    repeat = resolve_repeat(opts[:repeat], invalid)
-    opts = Keyword.put(opts, :repeat, repeat)
-    {opts, mock_mode, fix_mode}
+    {opts, mock_mode, fix_mode, invalid}
   end
 
-  defp resolve_repeat(repeat, _invalid) when is_integer(repeat), do: repeat
+  defp resolve_repeat(repeat, _invalid, _config) when is_integer(repeat), do: repeat
 
-  defp resolve_repeat(nil, invalid) do
+  defp resolve_repeat(nil, invalid, config) do
+    default = config["default_repeat"] || 100
     invalid_switches = Enum.map(invalid, fn {switch, _} -> switch end)
-    if "--repeat" in invalid_switches, do: 100, else: nil
+    if "--repeat" in invalid_switches, do: default, else: nil
   end
 
   defp print_help do
@@ -132,7 +205,7 @@ defmodule CheckEscript do
     |> then(&IO.puts("## " <> &1))
   end
 
-  defp define_tasks(mock_mode, partitions, test_dir, test_args, repeat) do
+  defp define_tasks(mock_mode, partitions, test_dir, test_args, repeat, config, coverage) do
     base_tasks =
       if mock_mode do
         # mock tasks for testing
@@ -145,17 +218,14 @@ defmodule CheckEscript do
           credo_strict: {"Credo Strict", "sh", ["-c", "sleep 6 && exit 1"]}
         }
       else
-        # real tasks
-        %{
-          format: {"Formatting", "mix", ["format", "--check-formatted"]},
-          compile: {"Compile", "mix", ["compile", "--warnings-as-errors"]},
-          compile_test:
-            {"Compile (test)", "sh", ["-c", "MIX_ENV=test mix compile --warnings-as-errors"]},
-          dialyzer: {"Dialyzer", "mix", ["dialyzer"]},
-          credo: {"Credo", "mix", ["credo", "--all"]},
-          credo_strict:
-            {"Credo Strict", "mix", ["credo", "--strict", "--only", "readability", "--all"]}
-        }
+        checks_config = config["checks"] || @default_checks
+
+        checks_config
+        |> Enum.map(fn {key, value} ->
+          {name, cmd, args} = parse_check_config(key, value)
+          {String.to_atom(key), {name, cmd, args}}
+        end)
+        |> Map.new()
       end
 
     test_procs = test_procs(partitions)
@@ -182,7 +252,7 @@ defmodule CheckEscript do
             {task_name, "sh",
              [
                "-c",
-               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix test #{test_path} #{test_flags} --partitions #{partitions}"
+               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix #{if coverage, do: "coveralls", else: "test"} #{test_path} #{test_flags} --partitions #{partitions}"
              ], partition, partitions}
           end
 
@@ -192,13 +262,28 @@ defmodule CheckEscript do
     Map.merge(base_tasks, test_tasks)
   end
 
-  defp select_tasks(all_tasks, opts, partitions) do
+  defp parse_check_config(key, %{"run" => run} = config) do
+    name = config["name"] || humanize_key(key)
+    {name, "sh", ["-c", run]}
+  end
+
+  defp humanize_key(key) do
+    key
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map_join(" ", &String.capitalize/1)
+  end
+
+  defp select_tasks(all_tasks, opts, partitions, config) do
     tasks =
       case {opts[:fast], opts[:only]} do
         # --fast overrides --only
         {true, _} ->
-          # run only: format, compile, compile_test, credo, credo_strict
-          [:format, :compile, :compile_test, :credo, :credo_strict]
+          fast_checks =
+            (config["fast"] || @default_fast)
+            |> Enum.map(fn name -> String.to_atom(to_string(name)) end)
+
+          fast_checks
           |> Enum.map(&Map.get(all_tasks, &1))
           |> Enum.reject(&is_nil/1)
 
@@ -244,8 +329,9 @@ defmodule CheckEscript do
     tasks
   end
 
-  defp build_test_cmd(test_dir, test_args, repeat, partitions) do
-    parts = ["mix test"]
+  defp build_test_cmd(test_dir, test_args, repeat, partitions, coverage) do
+    test_runner = if coverage, do: "mix coveralls", else: "mix test"
+    parts = [test_runner]
     parts = if test_dir, do: parts ++ [test_dir], else: parts
     parts = parts ++ [test_args || "--warnings-as-errors"]
     parts = if repeat, do: parts ++ ["--repeat-until-failure #{repeat}"], else: parts
@@ -253,7 +339,7 @@ defmodule CheckEscript do
     Enum.join(parts, " ")
   end
 
-  defp run_checks(tasks, _repeat, test_cmd) do
+  defp run_checks(tasks, _repeat, test_cmd, max_concurrency) do
     IO.puts("Running code quality checks in parallel...\n")
 
     # print test command if test tasks are present
@@ -318,7 +404,7 @@ defmodule CheckEscript do
         end,
         timeout: :infinity,
         ordered: false,
-        max_concurrency: 10
+        max_concurrency: max_concurrency
       )
       |> Enum.map(fn {:ok, result} ->
         case result do
