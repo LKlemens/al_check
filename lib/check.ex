@@ -67,7 +67,7 @@ defmodule CheckEscript do
         "max_concurrency": 10,
         "test_args": "--warnings-as-errors",
         "default_repeat": 100,
-        "coverage": false,
+        "coverage": "native",
         "checks": {
           "format": {"name": "Formatting", "run": "mix format --check-formatted"},
           "sobelow": {"name": "Security", "run": "mix sobelow --config"}
@@ -75,6 +75,9 @@ defmodule CheckEscript do
       }
 
   Name defaults to a capitalized version of the key (e.g. "compile_test" → "Compile Test").
+
+  Coverage modes: `false` (default), `"native"` (built-in --cover), or `"coveralls"` (excoveralls).
+  Both modes automatically merge partition coverage into a single report after all partitions complete.
 
   All fields are optional. CLI flags override config values.
   When `checks` is provided, it replaces all built-in checks (test partitions are always added).
@@ -128,16 +131,21 @@ defmodule CheckEscript do
         test_dir = opts[:dir]
         test_args = opts[:test_args] || config["test_args"]
         repeat = opts[:repeat]
-        coverage = config["coverage"] || false
+        coverage = parse_coverage(config["coverage"])
 
         all_tasks =
           define_tasks(mock_mode, partitions, test_dir, test_args, repeat, config, coverage)
 
         tasks = select_tasks(all_tasks, opts, partitions, config)
-        if has_test_tasks?(tasks), do: save_test_args(test_args)
+
+        if has_test_tasks?(tasks) do
+          save_test_args(test_args)
+          Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
+        end
+
         test_cmd = build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
         {results, total_seconds} = run_checks(tasks, repeat, test_cmd, max_concurrency)
-        print_summary(results, total_seconds, tasks)
+        print_summary(results, total_seconds, tasks, coverage)
     end
   end
 
@@ -249,10 +257,12 @@ defmodule CheckEscript do
                "sleep 2 && echo '............\n\nFinished in 0.1s\n20 tests, 0 failures' && exit 0"
              ], partition, partitions}
           else
+            {test_runner, coverage_flags} = test_runner_cmd(coverage, partition)
+
             {task_name, "sh",
              [
                "-c",
-               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix #{if coverage, do: "coveralls", else: "test"} #{test_path} #{test_flags} --partitions #{partitions}"
+               "ELIXIR_ERL_OPTIONS='+S #{test_procs}:#{test_procs}' MIX_TEST_PARTITION=#{partition} mix #{test_runner} #{test_path} #{test_flags}#{coverage_flags} --partitions #{partitions}"
              ], partition, partitions}
           end
 
@@ -330,13 +340,102 @@ defmodule CheckEscript do
   end
 
   defp build_test_cmd(test_dir, test_args, repeat, partitions, coverage) do
-    test_runner = if coverage, do: "mix coveralls", else: "mix test"
-    parts = [test_runner]
+    {runner, _} = test_runner_cmd(coverage, 1)
+    cover_flag = if coverage == :native, do: " --cover", else: ""
+    parts = ["mix #{runner}#{cover_flag}"]
     parts = if test_dir, do: parts ++ [test_dir], else: parts
     parts = parts ++ [test_args || "--warnings-as-errors"]
     parts = if repeat, do: parts ++ ["--repeat-until-failure #{repeat}"], else: parts
     parts = parts ++ ["--partitions #{partitions}"]
     Enum.join(parts, " ")
+  end
+
+  defp parse_coverage("native"), do: :native
+  defp parse_coverage("coveralls"), do: :coveralls
+  defp parse_coverage(_), do: false
+
+  defp test_runner_cmd(:native, _partition),
+    do: {"test", " --cover"}
+
+  defp test_runner_cmd(:coveralls, _partition), do: {"coveralls", ""}
+  defp test_runner_cmd(_, _partition), do: {"test", ""}
+
+  defp merge_coverage(false), do: :ok
+
+  defp merge_coverage(:native) do
+    IO.puts([IO.ANSI.format([:cyan, "\nMerging coverage data..."])])
+
+    {output, status} =
+      System.cmd("mix", ["test.coverage"], stderr_to_stdout: true)
+
+    print_coverage_summary(output, "cover/", status)
+  end
+
+  defp merge_coverage(:coveralls) do
+    IO.puts([IO.ANSI.format([:cyan, "\nMerging coverage data..."])])
+
+    {output, status} =
+      System.cmd("mix", ["coveralls", "--import-cover", "cover/"], stderr_to_stdout: true)
+
+    print_coverage_summary(output, "cover/", status)
+  end
+
+  defp print_coverage_summary(output, dir, status) do
+    # match the "Total" line: |     16.92% | Total     |
+    # or the "Coverage:   16.92%" line from threshold failure output
+    total_regex = ~r/(\d+\.?\d*)%\s*\|\s*Total|Coverage:\s+(\d+\.?\d*)%/
+    # match threshold from: "Threshold:  90.00%"
+    threshold =
+      case Regex.run(~r/Threshold:\s+(\d+\.?\d*)%/, output) do
+        [_, t] -> t
+        _ -> nil
+      end
+
+    case Regex.run(total_regex, output) do
+      [_, percentage, ""] ->
+        print_coverage_line(percentage, threshold, dir, status)
+
+      [_, "", percentage] ->
+        print_coverage_line(percentage, threshold, dir, status)
+
+      [_, percentage] ->
+        print_coverage_line(percentage, threshold, dir, status)
+
+      _ ->
+        IO.puts([IO.ANSI.format([:yellow, "Warning: Could not parse coverage from output"])])
+        IO.puts(output)
+        :ok
+    end
+  end
+
+  defp print_coverage_line(percentage, threshold, dir, status) do
+    pct = String.to_float(percentage)
+    color = if pct >= 80, do: :green, else: if(pct >= 50, do: :yellow, else: :red)
+
+    if status != 0 and threshold do
+      IO.puts([
+        IO.ANSI.format([
+          :red,
+          "✗ Coverage: #{percentage}% (threshold: #{threshold}%) | Report: #{dir}"
+        ])
+      ])
+
+      :failed
+    else
+      if status != 0 do
+        IO.puts([
+          IO.ANSI.format([
+            :red,
+            "✗ Coverage: #{percentage}% (threshold not met) | Report: #{dir}"
+          ])
+        ])
+
+        :failed
+      else
+        IO.puts([IO.ANSI.format([color, "✓ Coverage: #{percentage}% | Report: #{dir}"])])
+        :ok
+      end
+    end
   end
 
   defp run_checks(tasks, _repeat, test_cmd, max_concurrency) do
@@ -424,7 +523,7 @@ defmodule CheckEscript do
     {results, total_seconds}
   end
 
-  defp print_summary(results, total_seconds, tasks) do
+  defp print_summary(results, total_seconds, tasks, coverage) do
     # move cursor to bottom
     IO.write("\n")
 
@@ -443,16 +542,25 @@ defmodule CheckEscript do
       save_failed_tests(failed_tests)
     end
 
+    # merge coverage data from all partitions
+    coverage_failed? =
+      if has_test_tasks?(tasks), do: merge_coverage(coverage) == :failed, else: false
+
     failed_checks = Enum.filter(results, fn {_name, status, _output} -> status != 0 end)
 
     IO.puts("\nCompleted in #{total_seconds}s")
 
-    if Enum.empty?(failed_checks) do
-      IO.puts([IO.ANSI.format([:green, "\n✓ All checks passed!"])])
-    else
-      IO.puts([IO.ANSI.format([:red, "\n✗ #{length(failed_checks)} check(s) failed"])])
-      print_failure_details(failed_checks)
-      System.halt(1)
+    cond do
+      Enum.empty?(failed_checks) and not coverage_failed? ->
+        IO.puts([IO.ANSI.format([:green, "\n✓ All checks passed!"])])
+
+      Enum.empty?(failed_checks) and coverage_failed? ->
+        System.halt(1)
+
+      true ->
+        IO.puts([IO.ANSI.format([:red, "\n✗ #{length(failed_checks)} check(s) failed"])])
+        print_failure_details(failed_checks)
+        System.halt(1)
     end
   end
 
@@ -633,12 +741,13 @@ defmodule CheckEscript do
     # signal updater to stop
     send(updater_pid, :stop)
 
-    # fail if warnings detected in output (even if tests passed)
     final_status =
-      if status == 0 and detect_warnings_in_output(output) do
-        1
-      else
-        status
+      cond do
+        # fail if warnings detected in output (even if tests passed)
+        status == 0 and detect_warnings_in_output(output) -> 1
+        # ignore coverage threshold failure in partitions (merged coverage is checked later)
+        status != 0 and coverage_threshold_failure?(output) -> 0
+        true -> status
       end
 
     {final_status, output}
@@ -1057,5 +1166,10 @@ defmodule CheckEscript do
 
   defp detect_warnings_in_output(output) do
     String.contains?(output, "warning:")
+  end
+
+  defp coverage_threshold_failure?(output) do
+    String.contains?(output, "Expected minimum coverage") and
+      Regex.match?(~r/\d+ tests?, 0 failures/, output)
   end
 end

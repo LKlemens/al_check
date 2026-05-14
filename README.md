@@ -129,7 +129,7 @@ Create a `.check.json` in your project root to customize behavior:
   "max_concurrency": 10,
   "test_args": "--warnings-as-errors",
   "default_repeat": 100,
-  "coverage": false,
+  "coverage": "native",
   "checks": {
     "format": {"name": "Formatting", "run": "mix format --check-formatted"},
     "sobelow": {"name": "Security", "run": "mix sobelow --config"}
@@ -146,6 +146,14 @@ Override the config path via the `CHECK_CONFIG` environment variable.
 Each check is defined with a `run` string (the shell command to execute) and an optional `name` for display. If `name` is omitted, it defaults to a capitalized version of the key (e.g. `"compile_test"` → `"Compile Test"`).
 
 When `checks` is provided, it replaces all built-in checks (test partitions are always added).
+
+### Coverage
+
+Set `"coverage"` to merge partition coverage into a single report:
+
+- `"native"` — uses built-in `mix test --cover`, generates HTML report in `cover/`
+- `"coveralls"` — uses `mix coveralls`, merges via `--import-cover`
+- `false` (default) — no coverage
 
 ## Requirements
 
