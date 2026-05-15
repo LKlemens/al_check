@@ -79,15 +79,11 @@ defmodule Mix.Tasks.Check.Install do
   end
 
   defp build_escript(path) do
-    case System.cmd("mix", ["escript.build"],
-           cd: path,
-           stderr_to_stdout: true
-         ) do
-      {_output, 0} ->
-        :ok
-
-      {output, _status} ->
-        {:error, output}
+    with {_, 0} <- System.cmd("mix", ["deps.get"], cd: path, stderr_to_stdout: true),
+         {_, 0} <- System.cmd("mix", ["escript.build"], cd: path, stderr_to_stdout: true) do
+      :ok
+    else
+      {output, _status} -> {:error, output}
     end
   end
 
