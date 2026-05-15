@@ -177,8 +177,11 @@ defmodule CheckEscript do
   end
 
   defp parse_args(args) do
+    # Split on --test-args: everything after it is passed verbatim to mix test
+    {check_args, test_args} = split_test_args(args)
+
     {opts, remaining_args, invalid} =
-      OptionParser.parse(args,
+      OptionParser.parse(check_args,
         strict: [
           only: :string,
           fix: :boolean,
@@ -187,16 +190,24 @@ defmodule CheckEscript do
           failed: :boolean,
           dir: :string,
           watch: :boolean,
-          test_args: :string,
           repeat: :integer,
           help: :boolean
         ],
         aliases: [h: :help]
       )
 
+    opts = if test_args, do: Keyword.put(opts, :test_args, test_args), else: opts
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
     {opts, mock_mode, fix_mode, invalid}
+  end
+
+  # Splits args on "--test-args" — everything after it is joined into a single string
+  defp split_test_args(args) do
+    case Enum.split_while(args, &(&1 != "--test-args")) do
+      {before, ["--test-args" | rest]} -> {before, Enum.join(rest, " ")}
+      {all, []} -> {all, nil}
+    end
   end
 
   defp resolve_repeat(repeat, _invalid, _config) when is_integer(repeat), do: repeat
