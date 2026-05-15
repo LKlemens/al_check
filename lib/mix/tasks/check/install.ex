@@ -81,7 +81,6 @@ defmodule Mix.Tasks.Check.Install do
   defp build_escript(path) do
     case System.cmd("mix", ["escript.build"],
            cd: path,
-           env: [{"MIX_ENV", "prod"}],
            stderr_to_stdout: true
          ) do
       {_output, 0} ->
