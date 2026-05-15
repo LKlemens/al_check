@@ -202,11 +202,17 @@ defmodule CheckEscript do
     {opts, mock_mode, fix_mode, invalid}
   end
 
-  # Splits args on "--test-args" — everything after it is joined into a single string
+  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --repeat --help -h)
+
+  # Splits args on "--test-args" — collects args until the next known check flag
   defp split_test_args(args) do
     case Enum.split_while(args, &(&1 != "--test-args")) do
-      {before, ["--test-args" | rest]} -> {before, Enum.join(rest, " ")}
-      {all, []} -> {all, nil}
+      {before, ["--test-args" | rest]} ->
+        {test_args, trailing} = Enum.split_while(rest, &(&1 not in @check_flags))
+        {before ++ trailing, Enum.join(test_args, " ")}
+
+      {all, []} ->
+        {all, nil}
     end
   end
 
