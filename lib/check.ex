@@ -132,6 +132,7 @@ defmodule CheckEscript do
         test_args = opts[:test_args] || config["test_args"]
         repeat = opts[:repeat]
         coverage = parse_coverage(config["coverage"])
+        partitions = if mock_mode, do: partitions, else: cap_partitions(partitions, test_dir)
 
         all_tasks =
           define_tasks(mock_mode, partitions, test_dir, test_args, repeat, config, coverage)
@@ -213,6 +214,33 @@ defmodule CheckEscript do
     |> then(&IO.puts("## " <> &1))
   end
 
+  defp cap_partitions(partitions, test_dir) do
+    test_file_count =
+      Path.wildcard("#{test_dir || "test"}/**/*_test.exs") |> length()
+
+    cond do
+      test_file_count == 0 ->
+        IO.puts([
+          IO.ANSI.format([:yellow, "No test files found in #{test_dir || "test"}/"])
+        ])
+
+        0
+
+      test_file_count < partitions ->
+        IO.puts([
+          IO.ANSI.format([
+            :yellow,
+            "Not enough test files for #{partitions} partitions (found #{test_file_count}), using #{test_file_count}"
+          ])
+        ])
+
+        test_file_count
+
+      true ->
+        partitions
+    end
+  end
+
   defp define_tasks(mock_mode, partitions, test_dir, test_args, repeat, config, coverage) do
     base_tasks =
       if mock_mode do
@@ -245,7 +273,7 @@ defmodule CheckEscript do
 
     # generate test partition tasks
     test_tasks =
-      for partition <- 1..partitions, into: %{} do
+      for partition <- 1..max(partitions, 0)//1, into: %{} do
         task_key = String.to_atom("test_#{partition}")
         task_name = "Tests (#{partition}/#{partitions})"
 
