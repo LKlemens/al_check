@@ -1147,10 +1147,19 @@ defmodule CheckEscript do
 
   defp read_saved_test_args do
     case File.read(".check/test_args.txt") do
-      {:ok, content} -> content |> String.trim() |> String.split()
+      {:ok, content} -> content |> String.trim() |> String.split() |> fix_cover_flags()
       {:error, _} -> ["--warnings-as-errors"]
     end
   end
+
+  # --export-coverage dumps coverage to cover/ instead of printing per-file results immediately,
+  # so we can sum up coverage as a last step via mix test.coverage
+  defp fix_cover_flags([]), do: []
+
+  defp fix_cover_flags(["--cover" | rest]),
+    do: ["--cover", "--export-coverage", "failed" | fix_cover_flags(rest)]
+
+  defp fix_cover_flags([arg | rest]), do: [arg | fix_cover_flags(rest)]
 
   defp update_task_line(index, name, status, total_tasks, test_counts) do
     # calculate how many lines up we need to go from current position
