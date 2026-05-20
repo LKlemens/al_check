@@ -101,6 +101,11 @@ defmodule CheckEscript do
     "credo_strict" => %{
       "name" => "Credo Strict",
       "run" => "mix credo --strict --only readability --all"
+    },
+    "new_tests" => %{
+      "name" => "New Tests",
+      "run" =>
+        "files=$(git diff --name-only --diff-filter=d master... -- 'test/**/*_test.exs'); if [ -z \"$files\" ]; then echo 'No new test files on this branch'; else echo \"Running: \n$files\"; echo $files | xargs mix test; fi"
     }
   }
 
@@ -655,11 +660,18 @@ defmodule CheckEscript do
     # merge test partition outputs into single file
     merge_partition_outputs(results)
 
-    # extract and save failed tests only when test tasks ran
-    if has_test_tasks?(tasks) do
-      failed_tests = extract_failed_tests()
-      save_failed_tests(failed_tests)
-    end
+    # extract failed tests from partition outputs and all failed check outputs
+    partition_failures =
+      if has_test_tasks?(tasks), do: extract_failed_tests(), else: []
+
+    check_failures =
+      results
+      |> Enum.filter(fn {_name, status, _output} -> status != 0 end)
+      |> Enum.flat_map(fn {_name, _status, output} ->
+        extract_failed_tests_from_output(output)
+      end)
+
+    save_failed_tests((partition_failures ++ check_failures) |> Enum.uniq())
 
     # merge coverage data from all partitions
     coverage_failed? =
@@ -1091,6 +1103,16 @@ defmodule CheckEscript do
     else
       []
     end
+  end
+
+  defp extract_failed_tests_from_output(output) do
+    failures =
+      ~r/\d+\)\s+test\s+.*?\n\s+(test\/[^\s:]+\.exs):(\d+)/m
+      |> Regex.scan(output)
+      |> Enum.map(fn [_, file, line] -> "#{file}:#{line}" end)
+
+    warnings = extract_warning_locations(output)
+    failures ++ warnings
   end
 
   defp extract_warning_locations(content) do
