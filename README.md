@@ -129,7 +129,7 @@ Create a `.check.json` in your project root to customize behavior:
   "max_concurrency": 10,
   "test_args": "--warnings-as-errors",
   "default_repeat": 100,
-  "coverage": "native",
+  "coverage": {"mod": "native", "limit": 80},
   "checks": {
     "format": {"name": "Formatting", "run": "mix format --check-formatted"},
     "sobelow": {"name": "Security", "run": "mix sobelow --config"}
@@ -149,11 +149,14 @@ When `checks` is provided, it replaces all built-in checks (test partitions are 
 
 ### Coverage
 
-Set `"coverage"` to merge partition coverage into a single report:
+Configure coverage merging across partitions:
 
-- `"native"` — uses built-in `mix test --cover`, generates HTML report in `cover/`
-- `"coveralls"` — uses `mix coveralls`, merges via `--import-cover`
-- `false` (default) — no coverage
+```json
+"coverage": {"mod": "native", "limit": 80}
+```
+
+- `mod` — `"native"` (built-in `mix test --cover`) or `"coveralls"` (excoveralls)
+- `limit` — optional minimum coverage %. Fails the check if below this value
 
 ## Requirements
 

@@ -68,7 +68,7 @@ defmodule CheckEscript do
         "max_concurrency": 10,
         "test_args": "--warnings-as-errors",
         "default_repeat": 100,
-        "coverage": "native",
+        "coverage": {"mod": "native", "limit": 80},
         "checks": {
           "format": {"name": "Formatting", "run": "mix format --check-formatted"},
           "sobelow": {"name": "Security", "run": "mix sobelow --config"}
@@ -77,8 +77,10 @@ defmodule CheckEscript do
 
   Name defaults to a capitalized version of the key (e.g. "compile_test" → "Compile Test").
 
-  Coverage modes: `false` (default), `"native"` (built-in --cover), or `"coveralls"` (excoveralls).
-  Both modes automatically merge partition coverage into a single report after all partitions complete.
+  Coverage: `{"mod": "native", "limit": 80}` or `{"mod": "coveralls", "limit": 80}`.
+  `mod` selects the tool (`native` = built-in --cover, `coveralls` = excoveralls).
+  `limit` is optional — fails the check if total coverage is below the given percentage.
+  Partition coverage is merged into a single report after all partitions complete.
 
   All fields are optional. CLI flags override config values.
   When `checks` is provided, it replaces all built-in checks (test partitions are always added).
@@ -305,7 +307,7 @@ defmodule CheckEscript do
                "sleep 2 && echo '............\n\nFinished in 0.1s\n20 tests, 0 failures' && exit 0"
              ], partition, partitions}
           else
-            {test_runner, coverage_flags} = test_runner_cmd(coverage, partition)
+            {test_runner, coverage_flags} = test_runner_cmd(coverage.mod, partition)
 
             {task_name, "sh",
              [
@@ -388,8 +390,8 @@ defmodule CheckEscript do
   end
 
   defp build_test_cmd(test_dir, test_args, repeat, partitions, coverage) do
-    {runner, _} = test_runner_cmd(coverage, 1)
-    cover_flag = if coverage == :native, do: " --cover", else: ""
+    {runner, _} = test_runner_cmd(coverage.mod, 1)
+    cover_flag = if coverage.mod == :native, do: " --cover", else: ""
     parts = ["mix #{runner}#{cover_flag}"]
     parts = if test_dir, do: parts ++ [test_dir], else: parts
     parts = parts ++ [test_args || "--warnings-as-errors"]
@@ -398,9 +400,15 @@ defmodule CheckEscript do
     Enum.join(parts, " ")
   end
 
-  defp parse_coverage("native"), do: :native
-  defp parse_coverage("coveralls"), do: :coveralls
-  defp parse_coverage(_), do: false
+  defp parse_coverage(%{"mod" => mod} = config) do
+    %{mod: parse_coverage_mod(mod), limit: config["limit"]}
+  end
+
+  defp parse_coverage(_), do: %{mod: false, limit: nil}
+
+  defp parse_coverage_mod("native"), do: :native
+  defp parse_coverage_mod("coveralls"), do: :coveralls
+  defp parse_coverage_mod(_), do: false
 
   defp test_runner_cmd(:native, _partition),
     do: {"test", " --cover"}
@@ -408,81 +416,86 @@ defmodule CheckEscript do
   defp test_runner_cmd(:coveralls, _partition), do: {"coveralls", ""}
   defp test_runner_cmd(_, _partition), do: {"test", ""}
 
-  defp merge_coverage(false), do: :ok
+  defp merge_coverage(%{mod: false}), do: :ok
 
-  defp merge_coverage(:native) do
+  defp merge_coverage(%{mod: :native, limit: limit}) do
     IO.puts([IO.ANSI.format([:cyan, "\nMerging coverage data..."])])
 
-    {output, status} =
-      System.cmd("mix", ["test.coverage"], stderr_to_stdout: true)
+    port =
+      Port.open({:spawn_executable, System.find_executable("mix")}, [
+        :binary,
+        :exit_status,
+        :stderr_to_stdout,
+        args: ["test.coverage"]
+      ])
 
-    print_coverage_summary(output, "cover/", status)
+    {output, _status} = collect_coverage_output(port, "")
+    check_coverage(output, "cover/", limit)
   end
 
-  defp merge_coverage(:coveralls) do
+  defp merge_coverage(%{mod: :coveralls, limit: limit}) do
     IO.puts([IO.ANSI.format([:cyan, "\nMerging coverage data..."])])
 
-    {output, status} =
+    {output, _status} =
       System.cmd("mix", ["coveralls", "--import-cover", "cover/"], stderr_to_stdout: true)
 
-    print_coverage_summary(output, "cover/", status)
+    check_coverage(output, "cover/", limit)
   end
 
-  defp print_coverage_summary(output, dir, status) do
-    # match the "Total" line: |     16.92% | Total     |
-    # or the "Coverage:   16.92%" line from threshold failure output
-    total_regex = ~r/(\d+\.?\d*)%\s*\|\s*Total|Coverage:\s+(\d+\.?\d*)%/
-    # match threshold from: "Threshold:  90.00%"
-    threshold =
-      case Regex.run(~r/Threshold:\s+(\d+\.?\d*)%/, output) do
-        [_, t] -> t
-        _ -> nil
-      end
+  # Stream output from mix test.coverage, kill once Total line is found
+  defp collect_coverage_output(port, acc) do
+    receive do
+      {^port, {:data, data}} ->
+        acc = acc <> data
 
-    case Regex.run(total_regex, output) do
-      [_, percentage, ""] ->
-        print_coverage_line(percentage, threshold, dir, status)
+        if String.contains?(acc, "| Total") do
+          Port.close(port)
 
-      [_, "", percentage] ->
-        print_coverage_line(percentage, threshold, dir, status)
+          receive do
+            {^port, {:exit_status, status}} -> {acc, status}
+          after
+            1000 -> {acc, 0}
+          end
+        else
+          collect_coverage_output(port, acc)
+        end
 
-      [_, percentage] ->
-        print_coverage_line(percentage, threshold, dir, status)
-
-      _ ->
-        IO.puts([IO.ANSI.format([:yellow, "Warning: Could not parse coverage from output"])])
-        IO.puts(output)
-        :ok
+      {^port, {:exit_status, status}} ->
+        {acc, status}
     end
   end
 
-  defp print_coverage_line(percentage, threshold, dir, status) do
-    pct = String.to_float(percentage)
-    color = if pct >= 80, do: :green, else: if(pct >= 50, do: :yellow, else: :red)
+  defp check_coverage(output, dir, limit) do
+    total_regex = ~r/(\d+\.?\d*)%\s*\|\s*Total|Coverage:\s+(\d+\.?\d*)%/
 
-    if status != 0 and threshold do
-      IO.puts([
-        IO.ANSI.format([
-          :red,
-          "✗ Coverage: #{percentage}% (threshold: #{threshold}%) | Report: #{dir}"
-        ])
-      ])
+    pct =
+      case Regex.run(total_regex, output) do
+        [_, percentage, ""] -> String.to_float(percentage)
+        [_, "", percentage] -> String.to_float(percentage)
+        [_, percentage] -> String.to_float(percentage)
+        _ -> nil
+      end
 
-      :failed
-    else
-      if status != 0 do
+    cond do
+      is_nil(pct) ->
+        IO.puts([IO.ANSI.format([:yellow, "Warning: Could not parse coverage from output"])])
+        IO.puts(output)
+        :ok
+
+      limit && pct < limit ->
         IO.puts([
           IO.ANSI.format([
             :red,
-            "✗ Coverage: #{percentage}% (threshold not met) | Report: #{dir}"
+            "✗ Coverage: #{pct}% (limit: #{limit}%) | Report: #{dir}"
           ])
         ])
 
         :failed
-      else
-        IO.puts([IO.ANSI.format([color, "✓ Coverage: #{percentage}% | Report: #{dir}"])])
+
+      true ->
+        color = if pct >= 80, do: :green, else: if(pct >= 50, do: :yellow, else: :red)
+        IO.puts([IO.ANSI.format([color, "✓ Coverage: #{pct}% | Report: #{dir}"])])
         :ok
-      end
     end
   end
 
