@@ -46,15 +46,34 @@ defmodule Mix.Tasks.Check.Install do
         # Install the escript
         case install_escript(check_path) do
           :ok ->
+            Mix.shell().info("""
+
+            \e[35m        @@          \e[0m
+            \e[35m       @@@@         \e[0m
+            \e[35m      @@@@@@        \e[0m
+            \e[35m     @@@  @@@       \e[0m
+            \e[35m    @@@    @@@      \e[0m
+            \e[35m   @@@      @@@     \e[0m
+            \e[35m  @@@   @@   @@@    \e[0m
+            \e[35m   @@@  @@  @@@     \e[0m
+            \e[35m    @@@ @@ @@@      \e[0m
+            \e[35m     @@@@@@@        \e[0m
+            \e[35m      @@@@@         \e[0m
+            \e[35m       @@@          \e[0m
+            \e[35m        @           \e[0m
+            """)
+
             Mix.shell().info([
-              IO.ANSI.format([:green, "\n✓ Check escript installed successfully!"])
+              IO.ANSI.format([:green, :bright, "  ✓ AlCheck installed successfully!\n"])
             ])
 
-            Mix.shell().info("You can now run 'check' from anywhere.")
-            Mix.shell().info("\nExamples:")
-            Mix.shell().info("  check              # Run all checks")
-            Mix.shell().info("  check --fast       # Run fast checks only")
-            Mix.shell().info("  check --only test  # Run specific checks")
+            Mix.shell().info("  Run 'check' from anywhere.\n")
+            Mix.shell().info("  Examples:")
+            Mix.shell().info("    check              # Run all checks")
+            Mix.shell().info("    check --fast       # Run fast checks only")
+            Mix.shell().info("    check --only test  # Run specific checks")
+            Mix.shell().info("    check --init       # Create .check.json")
+            Mix.shell().info("    check -v           # Show version\n")
 
           {:error, reason} ->
             Mix.raise("Failed to install escript: #{reason}")
