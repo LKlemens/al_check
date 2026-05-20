@@ -316,7 +316,12 @@ defmodule CheckEscript do
       else
         checks_config = config["checks"] || @default_checks
 
+        if Map.has_key?(checks_config, "test") do
+          IO.puts(:stderr, "Warning: \"test\" in checks is ignored — use \"test_args\" or --test-args to configure test command")
+        end
+
         checks_config
+        |> Map.drop(["test"])
         |> Enum.map(fn {key, value} ->
           {name, cmd, args} = parse_check_config(key, value)
           {String.to_atom(key), {name, cmd, args}}
