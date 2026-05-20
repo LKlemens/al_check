@@ -5,6 +5,8 @@ defmodule CheckEscript do
   ## Usage
 
       check                                # Run all checks
+      check -v                             # Show version
+      check --init                         # Create .check.json with defaults
       check --help/-h                      # Show this help message
       check --fast                         # Run only fast checks (format, compile, credo)
       check --only format,test             # Run only format and test
@@ -71,7 +73,7 @@ defmodule CheckEscript do
         "coverage": {"mod": "native", "limit": 80},
         "checks": {
           "format": {"name": "Formatting", "run": "mix format --check-formatted"},
-          "sobelow": {"name": "Security", "run": "mix sobelow --config"}
+          "credo": {"name": "Credo", "run": "mix credo --all"}
         }
       }
 
@@ -102,6 +104,7 @@ defmodule CheckEscript do
   }
 
   @default_fast ["format", "compile", "compile_test", "credo", "credo_strict"]
+  @version Mix.Project.config()[:version]
 
   @spec main([String.t()]) :: :ok
   def main(args) do
@@ -111,6 +114,12 @@ defmodule CheckEscript do
     opts = Keyword.put(opts, :repeat, repeat)
 
     cond do
+      opts[:version] ->
+        IO.puts("check #{@version}")
+
+      opts[:init] ->
+        init_config()
+
       # if --help flag, print help and exit
       opts[:help] ->
         print_help()
@@ -151,6 +160,33 @@ defmodule CheckEscript do
         test_cmd = build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
         {results, total_seconds} = run_checks(tasks, repeat, test_cmd, max_concurrency, verbose)
         print_summary(results, total_seconds, tasks, coverage)
+    end
+  end
+
+  @default_config Jason.encode!(
+                    %{
+                      "fast" => ["format", "compile", "compile_test", "credo"],
+                      "partitions" => 3,
+                      "max_concurrency" => 10,
+                      "test_args" => "--warnings-as-errors",
+                      "default_repeat" => 100,
+                      "coverage" => %{"mod" => "native", "limit" => 80},
+                      "checks" => %{
+                        "format" => %{"name" => "Formatting", "run" => "mix format --check-formatted"},
+                        "credo" => %{"name" => "Credo", "run" => "mix credo --all"}
+                      }
+                    },
+                    pretty: true
+                  )
+
+  defp init_config do
+    config_path = Path.join(File.cwd!(), ".check.json")
+
+    if File.exists?(config_path) do
+      IO.puts([IO.ANSI.format([:yellow, "#{config_path} already exists"])])
+    else
+      File.write!(config_path, @default_config)
+      IO.puts([IO.ANSI.format([:green, "Created #{config_path}"])])
     end
   end
 
@@ -196,9 +232,11 @@ defmodule CheckEscript do
           watch: :boolean,
           verbose: :boolean,
           repeat: :integer,
-          help: :boolean
+          help: :boolean,
+          init: :boolean,
+          version: :boolean
         ],
-        aliases: [h: :help]
+        aliases: [h: :help, v: :version]
       )
 
     opts = if test_args, do: Keyword.put(opts, :test_args, test_args), else: opts
@@ -207,7 +245,7 @@ defmodule CheckEscript do
     {opts, mock_mode, fix_mode, invalid}
   end
 
-  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help -h)
+  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help -h --init --version -v)
 
   # Splits args on "--test-args" — collects args until the next known check flag
   defp split_test_args(args) do

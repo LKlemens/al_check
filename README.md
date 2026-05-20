@@ -132,7 +132,7 @@ Create a `.check.json` in your project root to customize behavior:
   "coverage": {"mod": "native", "limit": 80},
   "checks": {
     "format": {"name": "Formatting", "run": "mix format --check-formatted"},
-    "sobelow": {"name": "Security", "run": "mix sobelow --config"}
+    "credo": {"name": "Credo", "run": "mix credo --all"}
   }
 }
 ```
