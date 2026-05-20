@@ -616,7 +616,7 @@ defmodule CheckEscript do
 
             # regular task (3-tuple)
             {name, cmd, args} ->
-              {status, output} = run_check(cmd, args)
+              {status, output} = run_check(cmd, args, verbose)
               {name, index, status, output, nil}
           end
         end,
@@ -823,10 +823,32 @@ defmodule CheckEscript do
     "See .check/check_tests.txt for details"
   end
 
-  defp run_check(cmd, args) do
-    # suppress output unless there's an error
+  defp run_check(cmd, args, false) do
     {output, status} = System.cmd(cmd, args, stderr_to_stdout: true)
     {status, output}
+  end
+
+  defp run_check(cmd, args, true) do
+    port =
+      Port.open({:spawn_executable, System.find_executable(cmd)}, [
+        :binary,
+        :exit_status,
+        :stderr_to_stdout,
+        args: args
+      ])
+
+    collect_and_stream_output(port, "")
+  end
+
+  defp collect_and_stream_output(port, acc) do
+    receive do
+      {^port, {:data, data}} ->
+        IO.binwrite(:stdio, data)
+        collect_and_stream_output(port, acc <> data)
+
+      {^port, {:exit_status, status}} ->
+        {status, acc}
+    end
   end
 
   defp run_check_with_streaming(cmd, args, index, name, total_tasks, dot_counter_pid, partition, verbose) do
