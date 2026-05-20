@@ -15,6 +15,7 @@ defmodule CheckEscript do
       check --failed                       # Re-run only failed tests from previous run
       check --watch                        # Monitor test partition files in real-time
       check --test-args "--exclude slow"   # Replace default --warnings-as-errors with custom args
+      check --verbose                     # Print test output directly instead of partition status
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
 
   ## Available checks
@@ -144,8 +145,9 @@ defmodule CheckEscript do
           Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
         end
 
+        verbose = opts[:verbose] || false
         test_cmd = build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
-        {results, total_seconds} = run_checks(tasks, repeat, test_cmd, max_concurrency)
+        {results, total_seconds} = run_checks(tasks, repeat, test_cmd, max_concurrency, verbose)
         print_summary(results, total_seconds, tasks, coverage)
     end
   end
@@ -190,6 +192,7 @@ defmodule CheckEscript do
           failed: :boolean,
           dir: :string,
           watch: :boolean,
+          verbose: :boolean,
           repeat: :integer,
           help: :boolean
         ],
@@ -202,7 +205,7 @@ defmodule CheckEscript do
     {opts, mock_mode, fix_mode, invalid}
   end
 
-  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --repeat --help -h)
+  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help -h)
 
   # Splits args on "--test-args" — collects args until the next known check flag
   defp split_test_args(args) do
@@ -483,7 +486,7 @@ defmodule CheckEscript do
     end
   end
 
-  defp run_checks(tasks, _repeat, test_cmd, max_concurrency) do
+  defp run_checks(tasks, _repeat, test_cmd, max_concurrency, verbose) do
     IO.puts("Running code quality checks in parallel...\n")
 
     # print test command if test tasks are present
@@ -495,11 +498,13 @@ defmodule CheckEscript do
     schedulers = :erlang.system_info(:schedulers_online)
     IO.puts("Available schedulers: #{schedulers}\n")
 
-    # print initial status
-    Enum.each(tasks, fn task ->
-      name = elem(task, 0)
-      IO.puts("  • #{String.pad_trailing(name, 25)} [RUNNING]")
-    end)
+    # print initial status (skip in verbose mode to avoid interleaving)
+    if not verbose do
+      Enum.each(tasks, fn task ->
+        name = elem(task, 0)
+        IO.puts("  • #{String.pad_trailing(name, 25)} [RUNNING]")
+      end)
+    end
 
     # start time tracking
     start_time = System.monotonic_time(:millisecond)
@@ -527,7 +532,8 @@ defmodule CheckEscript do
                   name,
                   length(tasks),
                   dot_counter_pid,
-                  partition
+                  partition,
+                  verbose
                 )
 
               # get final test counts for this partition
@@ -553,7 +559,7 @@ defmodule CheckEscript do
       |> Enum.map(fn {:ok, result} ->
         case result do
           {name, index, status, output, test_count} ->
-            update_task_line(index, name, status, length(tasks), test_count)
+            if not verbose, do: update_task_line(index, name, status, length(tasks), test_count)
             {name, status, output}
         end
       end)
@@ -755,14 +761,16 @@ defmodule CheckEscript do
     {status, output}
   end
 
-  defp run_check_with_streaming(cmd, args, index, name, total_tasks, dot_counter_pid, partition) do
-    # start a process to update UI periodically
+  defp run_check_with_streaming(cmd, args, index, name, total_tasks, dot_counter_pid, partition, verbose) do
     parent = self()
 
+    # skip UI updater in verbose mode
     updater_pid =
-      spawn_link(fn ->
-        update_loop(parent, index, name, total_tasks, dot_counter_pid)
-      end)
+      if not verbose do
+        spawn_link(fn ->
+          update_loop(parent, index, name, total_tasks, dot_counter_pid)
+        end)
+      end
 
     # create check directory and open file for real-time streaming
     File.mkdir_p!(".check")
@@ -778,13 +786,12 @@ defmodule CheckEscript do
         args: args
       ])
 
-    {output, status} = collect_port_output(port, "", dot_counter_pid, partition, file_handle)
+    {output, status} = collect_port_output(port, "", dot_counter_pid, partition, file_handle, verbose)
 
     # close file handle
     File.close(file_handle)
 
-    # signal updater to stop
-    send(updater_pid, :stop)
+    if updater_pid, do: send(updater_pid, :stop)
 
     final_status =
       cond do
@@ -798,13 +805,13 @@ defmodule CheckEscript do
     {final_status, output}
   end
 
-  defp collect_port_output(port, acc, dot_counter_pid, partition, file_handle) do
+  defp collect_port_output(port, acc, dot_counter_pid, partition, file_handle, verbose) do
     receive do
       {^port, {:data, data}} ->
-        # write data to file immediately for real-time streaming
         IO.write(file_handle, data)
+        if verbose, do: IO.binwrite(:stdio, data)
         update_test_progress(data, dot_counter_pid, partition)
-        collect_port_output(port, acc <> data, dot_counter_pid, partition, file_handle)
+        collect_port_output(port, acc <> data, dot_counter_pid, partition, file_handle, verbose)
 
       {^port, {:exit_status, status}} ->
         {acc, status}
