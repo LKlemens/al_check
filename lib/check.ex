@@ -734,14 +734,20 @@ defmodule CheckEscript do
     IO.puts("FAILURE DETAILS")
     IO.puts(String.duplicate("=", 60))
 
-    Enum.each(failed_checks, fn {name, _status, output} ->
+    Enum.each(failed_checks, fn {name, status, output} ->
       IO.puts([IO.ANSI.format([:red, :bright, "\n#{name} failed:"])])
       IO.puts(String.duplicate("-", 40))
 
       if String.starts_with?(name, "Tests (") do
-        # test partition - show only summary line
+        # test partition - show summary and warning count if warnings-only
         summary = extract_test_summary(output)
         IO.puts(summary)
+
+        if status == :warnings do
+          warning_count = output |> String.split("warning:") |> length() |> Kernel.-(1)
+          IO.puts([IO.ANSI.format([:yellow, "#{warning_count} warning(s) detected"])])
+        end
+
         IO.puts([IO.ANSI.format([:yellow, "\nFull test output saved to check_tests.txt"])])
       else
         # show all error output for non-test checks
@@ -895,10 +901,14 @@ defmodule CheckEscript do
 
     if updater_pid, do: send(updater_pid, :stop)
 
+    tests_passed? = Regex.match?(~r/\d+ tests?, 0 failures/, output)
+
     final_status =
       cond do
-        # fail if warnings detected in output (even if tests passed)
-        status == 0 and detect_warnings_in_output(output) -> 1
+        # mark as warnings-only failure (tests passed but output has warnings)
+        status == 0 and detect_warnings_in_output(output) -> :warnings
+        # --warnings-as-errors makes mix exit non-zero even when tests pass
+        status != 0 and tests_passed? and detect_warnings_in_output(output) -> :warnings
         # ignore coverage threshold failure in partitions (merged coverage is checked later)
         status != 0 and coverage_threshold_failure?(output) -> 0
         true -> status
@@ -1318,11 +1328,19 @@ defmodule CheckEscript do
       {_, {total, failures}} when failures > 0 ->
         {"✗", :red, "[FAILED - #{failures}/#{total} tests]"}
 
+      # warnings-only failure with test counts
+      {:warnings, {total, _}} when total > 0 ->
+        {"!", :yellow, "[WARNINGS - #{total} tests]"}
+
+      # warnings-only failure without test counts
+      {:warnings, _} ->
+        {"!", :yellow, "[WARNINGS]"}
+
       # failure with test counts but no specific failure count
       {_, {total, 0}} when total > 0 ->
         {"✗", :red, "[FAILED - #{total} tests]"}
 
-      # failure without test counts (shouldn't happen for tests, but handle it)
+      # failure without test counts
       _ ->
         {"✗", :red, "[FAILED]"}
     end
