@@ -70,7 +70,7 @@ defmodule CheckEscript do
         "max_concurrency": 10,
         "test_args": "--warnings-as-errors",
         "default_repeat": 100,
-        "coverage": {"mod": "native", "limit": 80},
+        "coverage": {"mod": "native", "limit": 80, "html": false},
         "checks": {
           "format": {"name": "Formatting", "run": "mix format --check-formatted"},
           "credo": {"name": "Credo", "run": "mix credo --all"}
@@ -79,9 +79,10 @@ defmodule CheckEscript do
 
   Name defaults to a capitalized version of the key (e.g. "compile_test" → "Compile Test").
 
-  Coverage: `{"mod": "native", "limit": 80}` or `{"mod": "coveralls", "limit": 80}`.
+  Coverage: `{"mod": "native", "limit": 80, "html": false}`.
   `mod` selects the tool (`native` = built-in --cover, `coveralls` = excoveralls).
   `limit` is optional — fails the check if total coverage is below the given percentage.
+  `html` (default: false) — when true, generates full HTML report; when false, kills early after getting %.
   Partition coverage is merged into a single report after all partitions complete.
 
   All fields are optional. CLI flags override config values.
@@ -170,11 +171,8 @@ defmodule CheckEscript do
                       "max_concurrency" => 10,
                       "test_args" => "--warnings-as-errors",
                       "default_repeat" => 100,
-                      "coverage" => %{"mod" => "native", "limit" => 80},
-                      "checks" => %{
-                        "format" => %{"name" => "Formatting", "run" => "mix format --check-formatted"},
-                        "credo" => %{"name" => "Credo", "run" => "mix credo --all"}
-                      }
+                      "coverage" => %{"mod" => "native", "limit" => 80, "html" => false},
+                      "checks" => @default_checks
                     },
                     pretty: true
                   )
@@ -444,10 +442,10 @@ defmodule CheckEscript do
   end
 
   defp parse_coverage(%{"mod" => mod} = config) do
-    %{mod: parse_coverage_mod(mod), limit: config["limit"]}
+    %{mod: parse_coverage_mod(mod), limit: config["limit"], html: config["html"] || false}
   end
 
-  defp parse_coverage(_), do: %{mod: false, limit: nil}
+  defp parse_coverage(_), do: %{mod: false, limit: nil, html: false}
 
   defp parse_coverage_mod("native"), do: :native
   defp parse_coverage_mod("coveralls"), do: :coveralls
@@ -461,7 +459,7 @@ defmodule CheckEscript do
 
   defp merge_coverage(%{mod: false}), do: :ok
 
-  defp merge_coverage(%{mod: :native, limit: limit}) do
+  defp merge_coverage(%{mod: :native, limit: limit, html: html}) do
     IO.puts([IO.ANSI.format([:cyan, "\nMerging coverage data..."])])
 
     port =
@@ -472,8 +470,15 @@ defmodule CheckEscript do
         args: ["test.coverage"]
       ])
 
-    {output, _status} = collect_coverage_output(port, "")
-    check_coverage(output, "cover/", limit)
+    if html do
+      # let mix test.coverage finish to generate HTML report
+      {output, _status} = collect_port_until_exit(port, "")
+      check_coverage(output, "cover/", limit)
+    else
+      # kill once we have the Total line — skip slow HTML generation
+      {output, _status} = collect_coverage_output(port, "")
+      check_coverage(output, "cover/", limit)
+    end
   end
 
   defp merge_coverage(%{mod: :coveralls, limit: limit}) do
@@ -505,6 +510,13 @@ defmodule CheckEscript do
 
       {^port, {:exit_status, status}} ->
         {acc, status}
+    end
+  end
+
+  defp collect_port_until_exit(port, acc) do
+    receive do
+      {^port, {:data, data}} -> collect_port_until_exit(port, acc <> data)
+      {^port, {:exit_status, status}} -> {acc, status}
     end
   end
 
@@ -1183,9 +1195,6 @@ defmodule CheckEscript do
   # expand check names to include related checks
   # e.g., credo expands to both credo and credo_strict
   # test expands to all partitions
-  defp expand_check(:compile, _partitions), do: [:compile, :compile_test]
-  defp expand_check(:credo, _partitions), do: [:credo, :credo_strict]
-
   defp expand_check(:test, partitions) do
     for partition <- 1..partitions do
       String.to_atom("test_#{partition}")
