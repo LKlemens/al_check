@@ -19,17 +19,17 @@ defmodule CheckEscript.TasksTest do
     end
   end
 
-  describe "test_runner_cmd/2" do
+  describe "test_runner_cmd/1" do
     test "native returns test with --cover" do
-      assert Tasks.test_runner_cmd(:native, 1) == {"test", " --cover"}
+      assert Tasks.test_runner_cmd(:native) == {"test", " --cover"}
     end
 
     test "coveralls returns coveralls" do
-      assert Tasks.test_runner_cmd(:coveralls, 1) == {"coveralls", ""}
+      assert Tasks.test_runner_cmd(:coveralls) == {"coveralls", ""}
     end
 
     test "false returns plain test" do
-      assert Tasks.test_runner_cmd(false, 1) == {"test", ""}
+      assert Tasks.test_runner_cmd(false) == {"test", ""}
     end
   end
 
@@ -46,19 +46,20 @@ defmodule CheckEscript.TasksTest do
 
   describe "build_test_cmd/5" do
     test "basic test command" do
-      coverage = %{mod: false, limit: nil, html: false}
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
       cmd = Tasks.build_test_cmd(nil, nil, nil, 3, coverage)
       assert cmd == "mix test --warnings-as-errors --partitions 3"
     end
 
     test "with coverage" do
-      coverage = %{mod: :native, limit: 80, html: false}
+      coverage = %{mod: :native, limit: 80, html: false, baseline_cmd: nil}
       cmd = Tasks.build_test_cmd(nil, nil, nil, 3, coverage)
       assert cmd =~ "mix test --cover"
+      assert cmd =~ "--partitions 3"
     end
 
     test "with dir and custom args" do
-      coverage = %{mod: false, limit: nil, html: false}
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
       cmd = Tasks.build_test_cmd("test/foo", "--exclude slow", nil, 2, coverage)
       assert cmd =~ "test/foo"
       assert cmd =~ "--exclude slow"
@@ -66,9 +67,169 @@ defmodule CheckEscript.TasksTest do
     end
 
     test "with repeat" do
-      coverage = %{mod: false, limit: nil, html: false}
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
       cmd = Tasks.build_test_cmd(nil, nil, 10, 3, coverage)
       assert cmd =~ "--repeat-until-failure 10"
+    end
+  end
+
+  describe "define/7" do
+    test "mock mode returns predefined checks" do
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+      tasks = Tasks.define(true, 2, nil, nil, nil, %{}, coverage)
+
+      assert Map.has_key?(tasks, :format)
+      assert Map.has_key?(tasks, :compile)
+      assert Map.has_key?(tasks, :credo)
+      # test partitions are added
+      assert Map.has_key?(tasks, :test_1)
+      assert Map.has_key?(tasks, :test_2)
+    end
+
+    test "generates correct number of test partitions" do
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+      tasks = Tasks.define(true, 4, nil, nil, nil, %{}, coverage)
+
+      for i <- 1..4 do
+        assert Map.has_key?(tasks, String.to_atom("test_#{i}"))
+      end
+
+      refute Map.has_key?(tasks, :test_5)
+    end
+
+    test "zero partitions generates no test tasks" do
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+      tasks = Tasks.define(true, 0, nil, nil, nil, %{}, coverage)
+
+      refute Map.has_key?(tasks, :test_1)
+      assert Map.has_key?(tasks, :format)
+    end
+
+    test "uses custom checks from config" do
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+      config = %{"checks" => %{"lint" => %{"name" => "Lint", "run" => "mix lint"}}}
+      tasks = Tasks.define(false, 0, nil, nil, nil, config, coverage)
+
+      assert Map.has_key?(tasks, :lint)
+      refute Map.has_key?(tasks, :format)
+    end
+
+    test "warns and drops test key from custom checks" do
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+
+      config = %{
+        "checks" => %{
+          "test" => %{"name" => "Test", "run" => "mix test"},
+          "lint" => %{"name" => "Lint", "run" => "mix lint"}
+        }
+      }
+
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          tasks = Tasks.define(false, 0, nil, nil, nil, config, coverage)
+          send(self(), {:tasks, tasks})
+        end)
+
+      assert output =~ "\"test\" in checks is ignored"
+      assert_received {:tasks, tasks}
+      refute Map.has_key?(tasks, :test)
+      assert Map.has_key?(tasks, :lint)
+    end
+
+    test "resolves {partition} placeholder in test_args" do
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+
+      tasks =
+        Tasks.define(false, 2, nil, "--cover --export-coverage partition-{partition}", nil, %{}, coverage)
+
+      {_name, "sh", ["-c", cmd], 1, 2} = tasks[:test_1]
+      assert cmd =~ "--export-coverage partition-1"
+
+      {_name, "sh", ["-c", cmd2], 2, 2} = tasks[:test_2]
+      assert cmd2 =~ "--export-coverage partition-2"
+    end
+  end
+
+  describe "select/4" do
+    setup do
+      coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+      tasks = Tasks.define(true, 2, nil, nil, nil, %{}, coverage)
+      %{tasks: tasks}
+    end
+
+    test "selects all when no flags", %{tasks: tasks} do
+      selected = Tasks.select(tasks, [], 2, %{})
+      assert length(selected) == map_size(tasks)
+    end
+
+    test "fast mode selects only fast checks", %{tasks: tasks} do
+      selected = Tasks.select(tasks, [fast: true], 2, %{})
+      names = Enum.map(selected, &elem(&1, 0))
+      assert "Formatting" in names
+      assert "Compile" in names
+      refute Enum.any?(names, &String.starts_with?(&1, "Tests"))
+    end
+
+    test "only selects specified checks", %{tasks: tasks} do
+      selected = Tasks.select(tasks, [only: "format"], 2, %{})
+      assert length(selected) == 1
+      assert elem(hd(selected), 0) == "Formatting"
+    end
+
+    test "only test expands to partitions", %{tasks: tasks} do
+      selected = Tasks.select(tasks, [only: "test"], 2, %{})
+      assert length(selected) == 2
+      names = Enum.map(selected, &elem(&1, 0))
+      assert "Tests (1/2)" in names
+      assert "Tests (2/2)" in names
+    end
+
+    test "warns on unknown check", %{tasks: tasks} do
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          # include a valid check so the list isn't empty (which would call System.halt)
+          Tasks.select(tasks, [only: "nonexistent,format"], 2, %{})
+        end)
+
+      assert output =~ "Unknown check"
+    end
+  end
+
+  describe "cap_partitions/2" do
+    @tag :tmp_dir
+    test "caps when fewer files than partitions", %{tmp_dir: tmp_dir} do
+      File.write!(Path.join(tmp_dir, "one_test.exs"), "")
+
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          result = Tasks.cap_partitions(3, tmp_dir)
+          send(self(), {:result, result})
+        end)
+
+      assert_received {:result, 1}
+      assert output =~ "Not enough test files"
+    end
+
+    @tag :tmp_dir
+    test "returns 0 when no test files", %{tmp_dir: tmp_dir} do
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          result = Tasks.cap_partitions(3, tmp_dir)
+          send(self(), {:result, result})
+        end)
+
+      assert_received {:result, 0}
+      assert output =~ "No test files found"
+    end
+
+    @tag :tmp_dir
+    test "keeps partitions when enough files", %{tmp_dir: tmp_dir} do
+      for i <- 1..5 do
+        File.write!(Path.join(tmp_dir, "test_#{i}_test.exs"), "")
+      end
+
+      result = Tasks.cap_partitions(3, tmp_dir)
+      assert result == 3
     end
   end
 end

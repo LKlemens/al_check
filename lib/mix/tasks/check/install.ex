@@ -110,17 +110,13 @@ defmodule Mix.Tasks.Check.Install do
     # First, check if escript was built
     escript_path = Path.join([path, "scripts", "check"])
 
-    unless File.exists?(escript_path) do
-      {:error, "Escript not found at #{escript_path}"}
-    else
-      # Install the escript
+    if File.exists?(escript_path) do
       case System.cmd("mix", ["escript.install", "--force", escript_path], stderr_to_stdout: true) do
-        {_output, 0} ->
-          :ok
-
-        {output, _status} ->
-          {:error, output}
+        {_output, 0} -> :ok
+        {output, _status} -> {:error, output}
       end
+    else
+      {:error, "Escript not found at #{escript_path}"}
     end
   end
 end

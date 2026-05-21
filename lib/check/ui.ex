@@ -3,72 +3,65 @@ defmodule CheckEscript.UI do
 
   def update_task_line(index, name, status, total_tasks, test_counts) do
     lines_up = total_tasks - index
-
     {icon, color, text} = format_task_status(status, test_counts)
 
     IO.write([
       "\e[s",
       "\e[#{lines_up}A",
       "\e[2K",
-      IO.ANSI.format([
-        color,
-        "  #{icon} #{String.pad_trailing(name, 25)} #{text}\n"
-      ]),
+      IO.ANSI.format([color, "  #{icon} #{String.pad_trailing(name, 25)} #{text}\n"]),
       "\e[u"
     ])
   end
 
-  def format_task_status(status, test_counts) do
-    case {status, test_counts} do
-      {:running, {total, _failures}} when total > 0 ->
-        {"•", :yellow, "[RUNNING - #{total} tests]"}
+  def format_task_status(:running, {total, _}) when total > 0,
+    do: {"•", :yellow, "[RUNNING - #{total} tests]"}
 
-      {:running, _} ->
-        {"•", :yellow, "[RUNNING]"}
+  def format_task_status(:running, _),
+    do: {"•", :yellow, "[RUNNING]"}
 
-      {0, {total, _failures}} when total > 0 ->
-        {"✓", :green, "[OK - #{total} tests]"}
+  def format_task_status(0, {total, _}) when total > 0,
+    do: {"✓", :green, "[OK - #{total} tests]"}
 
-      {0, _} ->
-        {"✓", :green, "[OK]"}
+  def format_task_status(0, _),
+    do: {"✓", :green, "[OK]"}
 
-      {_, {total, failures}} when failures > 0 ->
-        {"✗", :red, "[FAILED - #{failures}/#{total} tests]"}
+  def format_task_status(:warnings, {total, _}) when total > 0,
+    do: {"!", :yellow, "[WARNINGS - #{total} tests]"}
 
-      {:warnings, {total, _}} when total > 0 ->
-        {"!", :yellow, "[WARNINGS - #{total} tests]"}
+  def format_task_status(:warnings, _),
+    do: {"!", :yellow, "[WARNINGS]"}
 
-      {:warnings, _} ->
-        {"!", :yellow, "[WARNINGS]"}
+  def format_task_status(_, {total, failures}) when failures > 0,
+    do: {"✗", :red, "[FAILED - #{failures}/#{total} tests]"}
 
-      {_, {total, 0}} when total > 0 ->
-        {"✗", :red, "[FAILED - #{total} tests]"}
+  def format_task_status(_, {total, 0}) when total > 0,
+    do: {"✗", :red, "[FAILED - #{total} tests]"}
 
-      _ ->
-        {"✗", :red, "[FAILED]"}
-    end
-  end
+  def format_task_status(_, _),
+    do: {"✗", :red, "[FAILED]"}
 
-  def update_loop(parent, index, name, total_tasks, dot_counter_pid) do
+  def update_loop(index, name, total_tasks, dot_counter_pid) do
     receive do
       :stop -> :ok
     after
       1000 ->
-        test_counts =
-          case Regex.run(~r/Tests \((\d+)\/\d+\)/, name) do
-            [_, partition_str] ->
-              Agent.get(dot_counter_pid, fn state ->
-                total = Map.get(state, "partition_#{partition_str}_total", 0)
-                failures = Map.get(state, "partition_#{partition_str}_failures", 0)
-                {total, failures}
-              end)
-
-            _ ->
-              nil
-          end
-
+        test_counts = get_test_counts(name, dot_counter_pid)
         update_task_line(index, name, :running, total_tasks, test_counts)
-        update_loop(parent, index, name, total_tasks, dot_counter_pid)
+        update_loop(index, name, total_tasks, dot_counter_pid)
+    end
+  end
+
+  defp get_test_counts(name, dot_counter_pid) do
+    case Regex.run(~r/Tests \((\d+)\/\d+\)/, name) do
+      [_, partition_str] ->
+        Agent.get(dot_counter_pid, fn state ->
+          {Map.get(state, "partition_#{partition_str}_total", 0),
+           Map.get(state, "partition_#{partition_str}_failures", 0)}
+        end)
+
+      _ ->
+        nil
     end
   end
 end

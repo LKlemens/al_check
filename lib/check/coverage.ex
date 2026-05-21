@@ -78,38 +78,40 @@ defmodule CheckEscript.Coverage do
   end
 
   def check(output, dir, limit) do
-    total_regex = ~r/(\d+\.?\d*)%\s*\|\s*Total|Coverage:\s+(\d+\.?\d*)%/
-
-    pct =
-      case Regex.run(total_regex, output) do
-        [_, percentage, ""] -> String.to_float(percentage)
-        [_, "", percentage] -> String.to_float(percentage)
-        [_, percentage] -> String.to_float(percentage)
-        _ -> nil
-      end
-
-    cond do
-      is_nil(pct) ->
+    case parse_total_percentage(output) do
+      nil ->
         IO.puts([IO.ANSI.format([:yellow, "Warning: Could not parse coverage from output"])])
         IO.puts(output)
         :ok
 
-      limit && pct < limit ->
-        IO.puts([
-          IO.ANSI.format([
-            :red,
-            "✗ Coverage: #{pct}% (limit: #{limit}%) | Report: #{dir}"
-          ])
-        ])
-
-        :failed
-
-      true ->
-        color = if pct >= 80, do: :green, else: if(pct >= 50, do: :yellow, else: :red)
-        IO.puts([IO.ANSI.format([color, "✓ Coverage: #{pct}% | Report: #{dir}"])])
-        :ok
+      pct ->
+        report_coverage(pct, dir, limit)
     end
   end
+
+  defp parse_total_percentage(output) do
+    case Regex.run(~r/(\d+\.?\d*)%\s*\|\s*Total|Coverage:\s+(\d+\.?\d*)%/, output) do
+      [_, percentage, ""] -> String.to_float(percentage)
+      [_, "", percentage] -> String.to_float(percentage)
+      [_, percentage] -> String.to_float(percentage)
+      _ -> nil
+    end
+  end
+
+  defp report_coverage(pct, dir, limit) when is_number(limit) and pct < limit do
+    IO.puts([IO.ANSI.format([:red, "✗ Coverage: #{pct}% (limit: #{limit}%) | Report: #{dir}"])])
+    :failed
+  end
+
+  defp report_coverage(pct, dir, _limit) do
+    color = coverage_color(pct)
+    IO.puts([IO.ANSI.format([color, "✓ Coverage: #{pct}% | Report: #{dir}"])])
+    :ok
+  end
+
+  defp coverage_color(pct) when pct >= 80, do: :green
+  defp coverage_color(pct) when pct >= 50, do: :yellow
+  defp coverage_color(_pct), do: :red
 
   defp coverdata_hash do
     Path.wildcard("cover/*.coverdata")

@@ -40,11 +40,12 @@ defmodule CheckEscript.Config do
   def default_fast, do: @default_fast
 
   def load do
+    default_path = Path.join(File.cwd!(), ".check.json")
+
     config_path =
       case System.get_env("CHECK_CONFIG") do
-        nil -> Path.join(File.cwd!(), ".check.json")
-        "" -> Path.join(File.cwd!(), ".check.json")
-        path -> path
+        path when is_binary(path) and path != "" -> path
+        _ -> default_path
       end
 
     if File.exists?(config_path) do

@@ -31,17 +31,6 @@ defmodule CheckEscript.Watch do
         args: ["-f", "-q", "-n", "+1" | partition_files]
       ])
 
-    stream_port_output(port)
-  end
-
-  defp stream_port_output(port) do
-    receive do
-      {^port, {:data, data}} ->
-        IO.binwrite(:stdio, data)
-        stream_port_output(port)
-
-      {^port, {:exit_status, status}} ->
-        status
-    end
+    CheckEscript.Runner.stream_port_output(port)
   end
 end

@@ -10,16 +10,13 @@ defmodule CheckEscript.Summary do
     save_format_failure_marker(results)
     merge_partition_outputs(results)
 
-    # extract failed tests from partition outputs and all failed check outputs
     partition_failures =
       if Tasks.has_test_tasks?(tasks), do: Failed.extract(), else: []
 
     check_failures =
       results
       |> Enum.filter(fn {_name, status, _output} -> status != 0 end)
-      |> Enum.flat_map(fn {_name, _status, output} ->
-        Failed.extract_from_output(output)
-      end)
+      |> Enum.flat_map(fn {_name, _status, output} -> Failed.extract_from_output(output) end)
 
     Failed.save((partition_failures ++ check_failures) |> Enum.uniq())
 
@@ -29,36 +26,82 @@ defmodule CheckEscript.Summary do
     failed_checks = Enum.filter(results, fn {_name, status, _output} -> status != 0 end)
 
     IO.puts("\nCompleted in #{total_seconds}s")
+    report_result(failed_checks, coverage_failed?)
+  end
 
+  defp report_result([], false) do
+    IO.puts([IO.ANSI.format([:green, "\n✓ All checks passed!"])])
+  end
+
+  defp report_result([], true), do: System.halt(1)
+
+  defp report_result(failed_checks, _coverage_failed?) do
+    IO.puts([IO.ANSI.format([:red, "\n✗ #{length(failed_checks)} check(s) failed"])])
+    print_failure_details(failed_checks)
+    System.halt(1)
+  end
+
+  defp print_failure_details(failed_checks) do
+    IO.puts("\n" <> String.duplicate("=", 60))
+    IO.puts("FAILURE DETAILS")
+    IO.puts(String.duplicate("=", 60))
+
+    Enum.each(failed_checks, &print_check_failure/1)
+  end
+
+  defp print_check_failure({name, status, output}) do
+    IO.puts([IO.ANSI.format([:red, :bright, "\n#{name} failed:"])])
+    IO.puts(String.duplicate("-", 40))
+
+    if String.starts_with?(name, "Tests (") do
+      print_test_failure(status, output)
+    else
+      print_check_output(output)
+    end
+  end
+
+  defp print_test_failure(status, output) do
+    IO.puts(extract_test_summary(output))
+
+    if status == :warnings do
+      warning_count = output |> String.split("warning:") |> length() |> Kernel.-(1)
+      IO.puts([IO.ANSI.format([:yellow, "#{warning_count} warning(s) detected"])])
+    end
+
+    IO.puts([IO.ANSI.format([:yellow, "\nFull test output saved to check_tests.txt"])])
+  end
+
+  defp print_check_output(output) do
+    output
+    |> String.split("\n")
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.each(&IO.puts(colorize_line(&1)))
+  end
+
+  defp colorize_line(line) do
     cond do
-      Enum.empty?(failed_checks) and not coverage_failed? ->
-        IO.puts([IO.ANSI.format([:green, "\n✓ All checks passed!"])])
+      String.contains?(line, "** ") -> [IO.ANSI.format([:red, line])]
+      String.contains?(line, "warning:") -> [IO.ANSI.format([:yellow, line])]
+      String.contains?(line, "error:") -> [IO.ANSI.format([:red, line])]
+      String.contains?(line, "┃") or String.contains?(line, "│") -> [IO.ANSI.format([:cyan, line])]
+      true -> line
+    end
+  end
 
-      Enum.empty?(failed_checks) and coverage_failed? ->
-        System.halt(1)
-
-      true ->
-        IO.puts([IO.ANSI.format([:red, "\n✗ #{length(failed_checks)} check(s) failed"])])
-        print_failure_details(failed_checks)
-        System.halt(1)
+  defp extract_test_summary(output) when is_binary(output) do
+    case Regex.run(~r/(\d+ tests?, \d+ failures?(, \d+ excluded)?.*)/m, output) do
+      [_, summary | _] -> summary
+      nil -> "See .check/check_tests.txt for details"
     end
   end
 
   defp save_credo_outputs(results) do
     File.mkdir_p!(".check")
 
-    results
-    |> Enum.filter(fn {name, _status, _output} ->
-      name in ["Credo", "Credo Strict"]
-    end)
-    |> Enum.each(fn {name, _status, output} ->
-      filename =
-        case name do
-          "Credo" -> ".check/credo.txt"
-          "Credo Strict" -> ".check/credo_strict.txt"
-        end
-
-      File.write!(filename, output)
+    Enum.each(results, fn
+      {"Credo", _status, output} -> File.write!(".check/credo.txt", output)
+      {"Credo Strict", _status, output} -> File.write!(".check/credo_strict.txt", output)
+      _ -> :ok
     end)
   end
 
@@ -70,113 +113,42 @@ defmodule CheckEscript.Summary do
         name == "Formatting" and status != 0
       end)
 
-    if format_failed? do
-      File.write!(".check/.format_failed", "")
-    else
-      File.rm(".check/.format_failed")
-    end
-  end
-
-  defp print_failure_details(failed_checks) do
-    IO.puts("\n" <> String.duplicate("=", 60))
-    IO.puts("FAILURE DETAILS")
-    IO.puts(String.duplicate("=", 60))
-
-    Enum.each(failed_checks, fn {name, status, output} ->
-      IO.puts([IO.ANSI.format([:red, :bright, "\n#{name} failed:"])])
-      IO.puts(String.duplicate("-", 40))
-
-      if String.starts_with?(name, "Tests (") do
-        summary = extract_test_summary(output)
-        IO.puts(summary)
-
-        if status == :warnings do
-          warning_count = output |> String.split("warning:") |> length() |> Kernel.-(1)
-          IO.puts([IO.ANSI.format([:yellow, "#{warning_count} warning(s) detected"])])
-        end
-
-        IO.puts([IO.ANSI.format([:yellow, "\nFull test output saved to check_tests.txt"])])
-      else
-        lines =
-          output
-          |> String.split("\n")
-          |> Enum.reject(&(&1 == ""))
-
-        Enum.each(lines, fn line ->
-          formatted_line =
-            cond do
-              String.contains?(line, "** ") ->
-                [IO.ANSI.format([:red, line])]
-
-              String.contains?(line, "warning:") ->
-                [IO.ANSI.format([:yellow, line])]
-
-              String.contains?(line, "error:") ->
-                [IO.ANSI.format([:red, line])]
-
-              String.contains?(line, "┃") or String.contains?(line, "│") ->
-                [IO.ANSI.format([:cyan, line])]
-
-              true ->
-                line
-            end
-
-          IO.puts(formatted_line)
-        end)
-      end
-    end)
-  end
-
-  defp extract_test_summary(output) when is_binary(output) do
-    case Regex.run(~r/(\d+ tests?, \d+ failures?(, \d+ excluded)?.*)/m, output) do
-      [_, summary | _] -> summary
-      nil -> "See .check/check_tests.txt for details"
-    end
-  end
-
-  defp extract_test_summary(_output) do
-    "See .check/check_tests.txt for details"
+    if format_failed?,
+      do: File.write!(".check/.format_failed", ""),
+      else: File.rm(".check/.format_failed")
   end
 
   defp merge_partition_outputs(results) do
     partition_results =
       results
-      |> Enum.filter(fn {name, _status, _output} ->
-        String.starts_with?(name, "Tests (")
-      end)
-      |> Enum.sort_by(fn {name, _status, _output} ->
-        case Regex.run(~r/Tests \((\d+)\/\d+\)/, name) do
-          [_, partition_str] -> String.to_integer(partition_str)
-          _ -> 0
-        end
-      end)
+      |> Enum.filter(fn {name, _status, _output} -> String.starts_with?(name, "Tests (") end)
+      |> Enum.sort_by(&partition_number/1)
 
     if Enum.any?(partition_results) do
       timestamp = DateTime.utc_now() |> DateTime.to_string()
 
       content =
-        [
-          "Test Output - Generated at #{timestamp}",
-          String.duplicate("=", 60),
-          ""
-        ] ++
+        ["Test Output - Generated at #{timestamp}", String.duplicate("=", 60), ""] ++
           Enum.flat_map(partition_results, fn {name, _status, output} ->
-            partition_num =
-              case Regex.run(~r/Tests \((\d+)\/(\d+)\)/, name) do
-                [_, p, t] -> "#{p}/#{t}"
-                _ -> "?"
-              end
-
-            [
-              "\nPARTITION #{partition_num}",
-              String.duplicate("-", 60),
-              output,
-              ""
-            ]
+            ["\nPARTITION #{partition_label(name)}", String.duplicate("-", 60), output, ""]
           end)
 
       File.mkdir_p!(".check")
       File.write!(".check/check_tests.txt", Enum.join(content, "\n"))
+    end
+  end
+
+  defp partition_number({name, _status, _output}) do
+    case Regex.run(~r/Tests \((\d+)\/\d+\)/, name) do
+      [_, n] -> String.to_integer(n)
+      _ -> 0
+    end
+  end
+
+  defp partition_label(name) do
+    case Regex.run(~r/Tests \((\d+)\/(\d+)\)/, name) do
+      [_, p, t] -> "#{p}/#{t}"
+      _ -> "?"
     end
   end
 end
