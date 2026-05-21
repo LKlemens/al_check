@@ -1,8 +1,7 @@
 defmodule AlCheckTest do
   use ExUnit.Case
-  doctest AlCheck
 
-  test "greets the world" do
-    assert AlCheck.hello() == :world
+  test "version is set" do
+    assert is_binary(Mix.Project.config()[:version])
   end
 end
