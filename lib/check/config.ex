@@ -14,6 +14,10 @@ defmodule CheckEscript.Config do
       "name" => "Credo Strict",
       "run" => "mix credo --strict --only readability --all"
     },
+    "modified_tests" => %{
+      "name" => "Modified Tests",
+      "run" => "builtin:modified_tests"
+    },
     "modified_test_modules" => %{
       "name" => "Modified Test Modules",
       "run" =>
@@ -87,6 +91,11 @@ defmodule CheckEscript.Config do
 
   def parse_coverage(_), do: %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
+  def parse_check_config(key, %{"run" => "builtin:" <> builtin} = config) do
+    name = config["name"] || humanize_key(key)
+    {name, :builtin, [builtin]}
+  end
+
   def parse_check_config(key, %{"run" => run} = config) do
     name = config["name"] || humanize_key(key)
     {name, "sh", ["-c", run]}
@@ -99,25 +108,29 @@ defmodule CheckEscript.Config do
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  @known_keys ~w(fast partitions max_concurrency test_args default_repeat coverage checks)
+  @known_keys ~w(fast partitions max_concurrency test_args default_repeat coverage checks base_branch)
   @known_coverage_keys ~w(mod limit html baseline_cmd)
   @known_check_keys ~w(name run)
 
   defp warn_unknown_keys(config) do
     warn_keys(config, @known_keys, "")
-
-    if is_map(config["coverage"]) do
-      warn_keys(config["coverage"], @known_coverage_keys, "coverage.")
-    end
-
-    if is_map(config["checks"]) do
-      Enum.each(config["checks"], fn {check_name, check_config} ->
-        if is_map(check_config) do
-          warn_keys(check_config, @known_check_keys, "checks.#{check_name}.")
-        end
-      end)
-    end
+    warn_coverage_keys(config["coverage"])
+    warn_check_entries(config["checks"])
   end
+
+  defp warn_coverage_keys(coverage) when is_map(coverage),
+    do: warn_keys(coverage, @known_coverage_keys, "coverage.")
+
+  defp warn_coverage_keys(_), do: :ok
+
+  defp warn_check_entries(checks) when is_map(checks) do
+    Enum.each(checks, fn
+      {name, config} when is_map(config) -> warn_keys(config, @known_check_keys, "checks.#{name}.")
+      _ -> :ok
+    end)
+  end
+
+  defp warn_check_entries(_), do: :ok
 
   defp warn_keys(map, known, prefix) do
     unknown = Map.keys(map) -- known

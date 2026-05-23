@@ -47,6 +47,20 @@ defmodule CheckEscript.ConfigTest do
       assert Config.parse_check_config("compile_test", config) ==
                {"Compile Test", "sh", ["-c", "mix compile --warnings-as-errors"]}
     end
+
+    test "parses builtin: prefix" do
+      config = %{"name" => "Modified Tests", "run" => "builtin:modified_tests"}
+
+      assert Config.parse_check_config("modified_tests", config) ==
+               {"Modified Tests", :builtin, ["modified_tests"]}
+    end
+
+    test "builtin uses humanized key when name is missing" do
+      config = %{"run" => "builtin:modified_tests"}
+
+      assert Config.parse_check_config("modified_tests", config) ==
+               {"Modified Tests", :builtin, ["modified_tests"]}
+    end
   end
 
   describe "humanize_key/1" do

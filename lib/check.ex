@@ -93,7 +93,7 @@ defmodule CheckEscript do
   When `checks` is provided, it replaces all built-in checks (test partitions are always added).
   """
 
-  alias CheckEscript.{Config, Failed, Fix, ModifiedTests, Runner, Summary, Tasks, Watch}
+  alias CheckEscript.{Config, Failed, Fix, Runner, Summary, Tasks, Watch}
 
   @version Mix.Project.config()[:version]
 
@@ -103,41 +103,25 @@ defmodule CheckEscript do
 
     config =
       case Config.load() do
-        {:ok, config} ->
-          config
-
-        {:error, msg} ->
-          IO.puts(:stderr, msg)
-          System.halt(1)
+        {:ok, config} -> config
+        {:error, msg} -> IO.puts(:stderr, msg) && System.halt(1)
       end
 
     repeat = resolve_repeat(opts[:repeat], invalid, config)
     opts = Keyword.put(opts, :repeat, repeat)
 
+    dispatch(opts, mock_mode, fix_mode, config)
+  end
+
+  defp dispatch(opts, mock_mode, fix_mode, config) do
     cond do
-      opts[:version] ->
-        IO.puts("check #{@version}")
-
-      opts[:init] ->
-        Config.init()
-
-      opts[:help] ->
-        print_help()
-
-      opts[:watch] ->
-        Watch.run()
-
-      opts[:failed] ->
-        Failed.run(opts[:repeat])
-
-      fix_mode ->
-        Fix.run()
-
-      opts[:only] == "modified_tests" ->
-        ModifiedTests.run()
-
-      true ->
-        run_checks(opts, mock_mode, config)
+      opts[:version] -> IO.puts("check #{@version}")
+      opts[:init] -> Config.init()
+      opts[:help] -> print_help()
+      opts[:watch] -> Watch.run()
+      opts[:failed] -> Failed.run(opts[:repeat])
+      fix_mode -> Fix.run()
+      true -> run_checks(opts, mock_mode, config)
     end
   end
 

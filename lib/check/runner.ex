@@ -28,6 +28,11 @@ defmodule CheckEscript.Runner do
     end
   end
 
+  def run_check(:builtin, [name], _verbose) do
+    status = run_builtin(name)
+    {status, ""}
+  end
+
   def run_check(cmd, args, false) do
     {output, status} = System.cmd(cmd, args, stderr_to_stdout: true)
     {status, output}
@@ -36,6 +41,13 @@ defmodule CheckEscript.Runner do
   def run_check(cmd, args, true) do
     port = CheckEscript.Port.open(cmd, args)
     collect_and_stream_output(port, "")
+  end
+
+  defp run_builtin("modified_tests"), do: CheckEscript.ModifiedTests.run()
+
+  defp run_builtin(name) do
+    IO.puts(:stderr, "Unknown builtin: #{name}")
+    1
   end
 
   # -- Private --

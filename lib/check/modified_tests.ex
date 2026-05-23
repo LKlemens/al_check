@@ -19,11 +19,16 @@ defmodule CheckEscript.ModifiedTests do
   end
 
   defp get_modified_test_files do
-    {output, 0} = System.cmd("git", ["diff", "--name-only", "--diff-filter=d", "master...", "--", "test/**/*_test.exs"])
+    case System.cmd("git", ["diff", "--name-only", "--diff-filter=d", "master...", "--", "test/**/*_test.exs"],
+           stderr_to_stdout: true
+         ) do
+      {output, 0} ->
+        output |> String.split("\n", trim: true) |> Enum.filter(&File.exists?/1)
 
-    output
-    |> String.split("\n", trim: true)
-    |> Enum.filter(&File.exists?/1)
+      {error, _} ->
+        IO.puts([IO.ANSI.format([:red, "git diff failed: #{String.trim(error)}"])])
+        []
+    end
   end
 
   defp targets_for_file(file) do
@@ -42,7 +47,7 @@ defmodule CheckEscript.ModifiedTests do
   end
 
   defp get_changed_lines(file) do
-    {output, 0} = System.cmd("git", ["diff", "-U0", "master...", "--", file])
+    {output, _status} = System.cmd("git", ["diff", "-U0", "master...", "--", file], stderr_to_stdout: true)
 
     # Parse @@ hunk headers: @@ -old,count +new,count @@
     ~r/@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/

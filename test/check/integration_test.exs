@@ -339,4 +339,32 @@ defmodule CheckEscript.IntegrationTest do
       assert "lib/my_app/users.ex" in files
     end
   end
+
+  describe "builtin checks in task flow" do
+    test "builtin check runs through runner" do
+      tasks = [{"Modified Tests", :builtin, ["modified_tests"]}]
+
+      output =
+        capture_io(fn ->
+          {results, _seconds} = CheckEscript.Runner.run_checks(tasks, nil, "", 10, false)
+          send(self(), {:results, results})
+        end)
+
+      assert_received {:results, [{"Modified Tests", 0, ""}]}
+      assert output =~ "Running code quality checks"
+    end
+
+    test "unknown builtin reports error" do
+      tasks = [{"Bad Builtin", :builtin, ["nonexistent"]}]
+
+      capture_io(fn ->
+        capture_io(:stderr, fn ->
+          {results, _seconds} = CheckEscript.Runner.run_checks(tasks, nil, "", 10, false)
+          send(self(), {:results, results})
+        end)
+      end)
+
+      assert_received {:results, [{"Bad Builtin", 1, ""}]}
+    end
+  end
 end
