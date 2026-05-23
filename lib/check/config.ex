@@ -51,18 +51,16 @@ defmodule CheckEscript.Config do
     if File.exists?(config_path) do
       case config_path |> File.read!() |> Jason.decode() do
         {:ok, config} when is_map(config) ->
-          config
+          {:ok, config}
 
         {:ok, _} ->
-          IO.puts(:stderr, "Warning: #{config_path} must contain a JSON object, ignoring config")
-          %{}
+          {:error, "#{config_path} must contain a JSON object"}
 
         {:error, reason} ->
-          IO.puts(:stderr, "Warning: Failed to parse #{config_path}: #{inspect(reason)}")
-          %{}
+          {:error, "Failed to parse #{config_path}: #{inspect(reason)}"}
       end
     else
-      %{}
+      {:ok, %{}}
     end
   end
 

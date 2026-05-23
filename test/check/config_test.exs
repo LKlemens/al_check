@@ -92,12 +92,12 @@ defmodule CheckEscript.ConfigTest do
 
   describe "load/0" do
     @tag :tmp_dir
-    test "returns empty map when no config file exists", %{tmp_dir: tmp_dir} do
+    test "returns ok with empty map when no config file exists", %{tmp_dir: tmp_dir} do
       original_dir = File.cwd!()
       File.cd!(tmp_dir)
 
       try do
-        assert Config.load() == %{}
+        assert Config.load() == {:ok, %{}}
       after
         File.cd!(original_dir)
       end
@@ -111,37 +111,35 @@ defmodule CheckEscript.ConfigTest do
       File.cd!(tmp_dir)
 
       try do
-        assert Config.load() == config
+        assert Config.load() == {:ok, config}
       after
         File.cd!(original_dir)
       end
     end
 
     @tag :tmp_dir
-    test "returns empty map for invalid json", %{tmp_dir: tmp_dir} do
+    test "returns error for invalid json", %{tmp_dir: tmp_dir} do
       original_dir = File.cwd!()
       File.write!(Path.join(tmp_dir, ".check.json"), "not json")
       File.cd!(tmp_dir)
 
       try do
-        ExUnit.CaptureIO.capture_io(:stderr, fn ->
-          assert Config.load() == %{}
-        end)
+        assert {:error, msg} = Config.load()
+        assert msg =~ "Failed to parse"
       after
         File.cd!(original_dir)
       end
     end
 
     @tag :tmp_dir
-    test "returns empty map for non-object json", %{tmp_dir: tmp_dir} do
+    test "returns error for non-object json", %{tmp_dir: tmp_dir} do
       original_dir = File.cwd!()
       File.write!(Path.join(tmp_dir, ".check.json"), "[1,2,3]")
       File.cd!(tmp_dir)
 
       try do
-        ExUnit.CaptureIO.capture_io(:stderr, fn ->
-          assert Config.load() == %{}
-        end)
+        assert {:error, msg} = Config.load()
+        assert msg =~ "must contain a JSON object"
       after
         File.cd!(original_dir)
       end

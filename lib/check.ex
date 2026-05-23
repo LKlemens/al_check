@@ -100,7 +100,17 @@ defmodule CheckEscript do
   @spec main([String.t()]) :: :ok
   def main(args) do
     {opts, mock_mode, fix_mode, invalid} = parse_args(args)
-    config = Config.load()
+
+    config =
+      case Config.load() do
+        {:ok, config} ->
+          config
+
+        {:error, msg} ->
+          IO.puts(:stderr, msg)
+          System.halt(1)
+      end
+
     repeat = resolve_repeat(opts[:repeat], invalid, config)
     opts = Keyword.put(opts, :repeat, repeat)
 
