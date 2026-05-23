@@ -79,10 +79,12 @@ defmodule CheckEscript do
 
   Name defaults to a capitalized version of the key (e.g. "compile_test" → "Compile Test").
 
-  Coverage: `{"mod": "native", "limit": 80, "html": false}`.
+  Coverage: `{"mod": "native", "limit": 80, "html": false, "baseline_cmd": "git show origin/master:coverage.txt"}`.
   `mod` selects the tool (`native` = built-in --cover, `coveralls` = excoveralls).
   `limit` is optional — fails the check if total coverage is below the given percentage.
   `html` (default: false) — when true, generates full HTML report; when false, kills early after getting %.
+  `baseline_cmd` is optional — shell command that outputs baseline coverage % (e.g. from master).
+  When set, shows coverage delta vs baseline after each run.
   Partition coverage is merged into a single report after all partitions complete.
 
   All fields are optional. CLI flags override config values.

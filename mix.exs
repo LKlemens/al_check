@@ -11,6 +11,7 @@ defmodule AlCheck.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      test_coverage: [ignore_modules: [CheckEscript.Port]],
       escript: [
         main_module: CheckEscript,
         path: "scripts/check"
@@ -35,7 +36,8 @@ defmodule AlCheck.MixProject do
     [
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:mimic, "~> 1.7", only: :test}
     ]
   end
 

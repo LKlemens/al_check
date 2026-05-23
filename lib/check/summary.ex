@@ -78,7 +78,7 @@ defmodule CheckEscript.Summary do
     |> Enum.each(&IO.puts(colorize_line(&1)))
   end
 
-  defp colorize_line(line) do
+  def colorize_line(line) do
     cond do
       String.contains?(line, "** ") -> [IO.ANSI.format([:red, line])]
       String.contains?(line, "warning:") -> [IO.ANSI.format([:yellow, line])]
@@ -88,7 +88,7 @@ defmodule CheckEscript.Summary do
     end
   end
 
-  defp extract_test_summary(output) when is_binary(output) do
+  def extract_test_summary(output) when is_binary(output) do
     case Regex.run(~r/(\d+ tests?, \d+ failures?(, \d+ excluded)?.*)/m, output) do
       [_, summary | _] -> summary
       nil -> "See .check/check_tests.txt for details"

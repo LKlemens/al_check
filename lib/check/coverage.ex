@@ -5,7 +5,7 @@ defmodule CheckEscript.Coverage do
 
   def merge(%{mod: false}), do: :ok
 
-  def merge(%{mod: :native, limit: limit, html: html}) do
+  def merge(%{mod: :native, html: html} = coverage) do
     IO.puts([IO.ANSI.format([:cyan, "\nMerging coverage data..."])])
 
     current_hash = coverdata_hash()
@@ -13,16 +13,10 @@ defmodule CheckEscript.Coverage do
     case read_cache(current_hash) do
       {:ok, cached_output} ->
         IO.puts([IO.ANSI.format([:cyan, "(cached)"])])
-        check(cached_output, "cover/", limit)
+        check(cached_output, "cover/", coverage)
 
       :miss ->
-        port =
-          Port.open({:spawn_executable, System.find_executable("mix")}, [
-            :binary,
-            :exit_status,
-            :stderr_to_stdout,
-            args: ["test.coverage"]
-          ])
+        port = CheckEscript.Port.open("mix", ["test.coverage"])
 
         output =
           if html do
@@ -34,17 +28,17 @@ defmodule CheckEscript.Coverage do
           end
 
         write_cache(current_hash, output)
-        check(output, "cover/", limit)
+        check(output, "cover/", coverage)
     end
   end
 
-  def merge(%{mod: :coveralls, limit: limit}) do
+  def merge(%{mod: :coveralls} = coverage) do
     IO.puts([IO.ANSI.format([:cyan, "\nMerging coverage data..."])])
 
     {output, _status} =
       System.cmd("mix", ["coveralls", "--import-cover", "cover/"], stderr_to_stdout: true)
 
-    check(output, "cover/", limit)
+    check(output, "cover/", coverage)
   end
 
   # Stream output from mix test.coverage, kill once Total line is found
@@ -59,7 +53,7 @@ defmodule CheckEscript.Coverage do
           receive do
             {^port, {:exit_status, status}} -> {acc, status}
           after
-            1000 -> {acc, 0}
+            100 -> {acc, 0}
           end
         else
           collect_coverage_output(port, acc)
@@ -77,16 +71,23 @@ defmodule CheckEscript.Coverage do
     end
   end
 
-  def check(output, dir, limit) do
+  def check(output, dir, coverage) when is_map(coverage) do
     case parse_total_percentage(output) do
       nil ->
         IO.puts([IO.ANSI.format([:yellow, "Warning: Could not parse coverage from output"])])
         IO.puts(output)
         :ok
 
-      pct ->
-        report_coverage(pct, dir, limit)
+      percentage ->
+        result = report_coverage(percentage, dir, coverage.limit)
+        compare_baseline(percentage, coverage.baseline_cmd)
+        result
     end
+  end
+
+  # backward compat for direct limit value
+  def check(output, dir, limit) do
+    check(output, dir, %{limit: limit, baseline_cmd: nil})
   end
 
   defp parse_total_percentage(output) do
@@ -98,20 +99,53 @@ defmodule CheckEscript.Coverage do
     end
   end
 
-  defp report_coverage(pct, dir, limit) when is_number(limit) and pct < limit do
-    IO.puts([IO.ANSI.format([:red, "✗ Coverage: #{pct}% (limit: #{limit}%) | Report: #{dir}"])])
+  defp report_coverage(percentage, dir, limit) when is_number(limit) and percentage < limit do
+    IO.puts([IO.ANSI.format([:red, "✗ Coverage: #{percentage}% (limit: #{limit}%) | Report: #{dir}"])])
     :failed
   end
 
-  defp report_coverage(pct, dir, _limit) do
-    color = coverage_color(pct)
-    IO.puts([IO.ANSI.format([color, "✓ Coverage: #{pct}% | Report: #{dir}"])])
+  defp report_coverage(percentage, dir, _limit) do
+    color = coverage_color(percentage)
+    IO.puts([IO.ANSI.format([color, "✓ Coverage: #{percentage}% | Report: #{dir}"])])
     :ok
   end
 
-  defp coverage_color(pct) when pct >= 80, do: :green
-  defp coverage_color(pct) when pct >= 50, do: :yellow
-  defp coverage_color(_pct), do: :red
+  defp coverage_color(percentage) when percentage >= 80, do: :green
+  defp coverage_color(percentage) when percentage >= 50, do: :yellow
+  defp coverage_color(_percentage), do: :red
+
+  defp compare_baseline(_percentage, nil), do: :ok
+
+  defp compare_baseline(percentage, baseline_cmd) do
+    case System.cmd("sh", ["-c", baseline_cmd], stderr_to_stdout: true) do
+      {output, 0} ->
+        case Float.parse(String.trim(output)) do
+          {baseline, _} ->
+            print_delta(percentage, baseline)
+
+          :error ->
+            IO.puts([IO.ANSI.format([:yellow, "Warning: Could not parse baseline coverage from: #{String.trim(output)}"])])
+        end
+
+      {error, _} ->
+        IO.puts([IO.ANSI.format([:yellow, "Warning: Baseline command failed: #{String.trim(error)}"])])
+    end
+  end
+
+  defp print_delta(percentage, baseline) do
+    delta = Float.round(percentage - baseline, 2)
+
+    cond do
+      delta > 0 ->
+        IO.puts([IO.ANSI.format([:green, "  Coverage: +#{delta}% vs baseline (#{baseline}%)"])])
+
+      delta < 0 ->
+        IO.puts([IO.ANSI.format([:red, "  Coverage: #{delta}% vs baseline (#{baseline}%)"])])
+
+      true ->
+        IO.puts([IO.ANSI.format([:cyan, "  Coverage: same as baseline (#{baseline}%)"])])
+    end
+  end
 
   defp coverdata_hash do
     Path.wildcard("cover/*.coverdata")

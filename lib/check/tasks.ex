@@ -159,6 +159,8 @@ defmodule CheckEscript.Tasks do
   def test_runner_cmd(:coveralls), do: {"coveralls", ""}
   def test_runner_cmd(_), do: {"test", ""}
 
+  def test_procs(0), do: 1
+
   def test_procs(partitions) do
     schedulers = :erlang.system_info(:schedulers_online)
     procs = floor(schedulers / partitions)

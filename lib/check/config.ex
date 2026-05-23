@@ -78,10 +78,15 @@ defmodule CheckEscript.Config do
   end
 
   def parse_coverage(%{"mod" => mod} = config) do
-    %{mod: parse_coverage_mod(mod), limit: config["limit"], html: config["html"] || false}
+    %{
+      mod: parse_coverage_mod(mod),
+      limit: config["limit"],
+      html: config["html"] || false,
+      baseline_cmd: config["baseline_cmd"]
+    }
   end
 
-  def parse_coverage(_), do: %{mod: false, limit: nil, html: false}
+  def parse_coverage(_), do: %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
   def parse_check_config(key, %{"run" => run} = config) do
     name = config["name"] || humanize_key(key)

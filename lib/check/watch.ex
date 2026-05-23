@@ -23,14 +23,7 @@ defmodule CheckEscript.Watch do
       "\n"
     ])
 
-    port =
-      Port.open({:spawn_executable, System.find_executable("tail")}, [
-        :binary,
-        :exit_status,
-        :stderr_to_stdout,
-        args: ["-f", "-q", "-n", "+1" | partition_files]
-      ])
-
+    port = CheckEscript.Port.open("tail", ["-f", "-q", "-n", "+1" | partition_files])
     CheckEscript.Runner.stream_port_output(port)
   end
 end

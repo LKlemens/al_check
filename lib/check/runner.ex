@@ -34,14 +34,7 @@ defmodule CheckEscript.Runner do
   end
 
   def run_check(cmd, args, true) do
-    port =
-      Port.open({:spawn_executable, System.find_executable(cmd)}, [
-        :binary,
-        :exit_status,
-        :stderr_to_stdout,
-        args: args
-      ])
-
+    port = CheckEscript.Port.open(cmd, args)
     collect_and_stream_output(port, "")
   end
 
@@ -82,7 +75,7 @@ defmodule CheckEscript.Runner do
   end
 
   defp execute_task({name, cmd, args, partition, total_partitions}, index, task_count, dot_counter_pid, verbose) do
-    Process.sleep((rem(index, total_partitions) + 1) * 1000)
+    Process.sleep((rem(index, total_partitions) + 1) * 200)
 
     {status, output} =
       run_check_with_streaming(cmd, args, index, name, task_count, dot_counter_pid, partition, verbose)
@@ -110,13 +103,7 @@ defmodule CheckEscript.Runner do
     File.mkdir_p!(".check")
     file_handle = File.open!(".check/test_partition_#{partition}.txt", [:write, :utf8])
 
-    port =
-      Port.open({:spawn_executable, System.find_executable(cmd)}, [
-        :binary,
-        :exit_status,
-        :stderr_to_stdout,
-        args: args
-      ])
+    port = CheckEscript.Port.open(cmd, args)
 
     {output, status} = collect_port_output(port, "", dot_counter_pid, partition, file_handle, verbose)
 
@@ -126,7 +113,7 @@ defmodule CheckEscript.Runner do
     {determine_final_status(status, output), output}
   end
 
-  defp determine_final_status(status, output) do
+  def determine_final_status(status, output) do
     tests_passed? = Regex.match?(~r/\d+ tests?, 0 failures/, output)
 
     cond do

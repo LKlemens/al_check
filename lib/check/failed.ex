@@ -80,13 +80,7 @@ defmodule CheckEscript.Failed do
 
     IO.puts([IO.ANSI.format([:cyan, "Test command: mix #{Enum.join(all_args, " ")}\n"])])
 
-    port =
-      Port.open({:spawn_executable, System.find_executable("mix")}, [
-        :binary,
-        :exit_status,
-        :stderr_to_stdout,
-        args: all_args ++ failed_tests
-      ])
+    port = CheckEscript.Port.open("mix", all_args ++ failed_tests)
 
     status = CheckEscript.Runner.stream_port_output(port)
 
