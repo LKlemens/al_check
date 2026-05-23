@@ -14,10 +14,10 @@ defmodule CheckEscript.Config do
       "name" => "Credo Strict",
       "run" => "mix credo --strict --only readability --all"
     },
-    "new_tests" => %{
-      "name" => "New Tests",
+    "modified_test_modules" => %{
+      "name" => "Modified Test Modules",
       "run" =>
-        "files=$(git diff --name-only --diff-filter=d master... -- 'test/**/*_test.exs'); if [ -z \"$files\" ]; then echo 'No new test files on this branch'; else echo \"Running: \n$files\"; echo $files | xargs mix test; fi"
+        "files=$(git diff --name-only --diff-filter=d master... -- 'test/**/*_test.exs'); if [ -z \"$files\" ]; then echo 'No modified test files on this branch'; else echo \"Running: \n$files\"; echo $files | xargs mix test; fi"
     }
   }
 

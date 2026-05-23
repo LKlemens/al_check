@@ -70,7 +70,7 @@ defmodule CheckEscript.ConfigTest do
       assert Map.has_key?(checks, "format")
       assert Map.has_key?(checks, "compile")
       assert Map.has_key?(checks, "credo")
-      assert Map.has_key?(checks, "new_tests")
+      assert Map.has_key?(checks, "modified_test_modules")
     end
 
     test "each check has name and run" do

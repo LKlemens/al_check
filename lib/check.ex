@@ -11,6 +11,8 @@ defmodule CheckEscript do
       check --fast                         # Run only fast checks (format, compile, credo)
       check --only format,test             # Run only format and test
       check --only credo                   # Run credo and credo_strict
+      check --only modified_tests          # Run only modified/new tests vs master
+      check --only modified_test_modules   # Run whole test files modified on branch
       check --partitions 2                 # Run tests with 2 partitions (default: 3)
       check --dir test/dir                 # Run tests only from specific directory
       check --fix                          # Apply fixes from stored credo output
@@ -91,7 +93,7 @@ defmodule CheckEscript do
   When `checks` is provided, it replaces all built-in checks (test partitions are always added).
   """
 
-  alias CheckEscript.{Config, Failed, Fix, Runner, Summary, Tasks, Watch}
+  alias CheckEscript.{Config, Failed, Fix, ModifiedTests, Runner, Summary, Tasks, Watch}
 
   @version Mix.Project.config()[:version]
 
@@ -120,6 +122,9 @@ defmodule CheckEscript do
 
       fix_mode ->
         Fix.run()
+
+      opts[:only] == "modified_tests" ->
+        ModifiedTests.run()
 
       true ->
         run_checks(opts, mock_mode, config)
