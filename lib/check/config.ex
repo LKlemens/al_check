@@ -51,6 +51,7 @@ defmodule CheckEscript.Config do
     if File.exists?(config_path) do
       case config_path |> File.read!() |> Jason.decode() do
         {:ok, config} when is_map(config) ->
+          warn_unknown_keys(config)
           {:ok, config}
 
         {:ok, _} ->
@@ -96,6 +97,34 @@ defmodule CheckEscript.Config do
     |> String.replace("_", " ")
     |> String.split()
     |> Enum.map_join(" ", &String.capitalize/1)
+  end
+
+  @known_keys ~w(fast partitions max_concurrency test_args default_repeat coverage checks)
+  @known_coverage_keys ~w(mod limit html baseline_cmd)
+  @known_check_keys ~w(name run)
+
+  defp warn_unknown_keys(config) do
+    warn_keys(config, @known_keys, "")
+
+    if is_map(config["coverage"]) do
+      warn_keys(config["coverage"], @known_coverage_keys, "coverage.")
+    end
+
+    if is_map(config["checks"]) do
+      Enum.each(config["checks"], fn {check_name, check_config} ->
+        if is_map(check_config) do
+          warn_keys(check_config, @known_check_keys, "checks.#{check_name}.")
+        end
+      end)
+    end
+  end
+
+  defp warn_keys(map, known, prefix) do
+    unknown = Map.keys(map) -- known
+
+    Enum.each(unknown, fn key ->
+      IO.puts(:stderr, "Warning: Unknown config key \"#{prefix}#{key}\" in .check.json")
+    end)
   end
 
   defp parse_coverage_mod("native"), do: :native
