@@ -34,6 +34,10 @@ defmodule CheckEscript.Config do
                       "test_args" => "--warnings-as-errors",
                       "default_repeat" => 100,
                       "base_branch" => "main",
+                      "fix" => [
+                        %{"run" => "mix format"},
+                        %{"run" => "mix recode", "on_credo_files" => true}
+                      ],
                       "coverage" => %{"mod" => "native", "limit" => 80, "html" => false},
                       "checks" => @default_checks
                     },
@@ -108,7 +112,7 @@ defmodule CheckEscript.Config do
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  @known_keys ~w(fast partitions max_concurrency test_args default_repeat coverage checks base_branch)
+  @known_keys ~w(fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix)
   @known_coverage_keys ~w(mod limit html baseline_cmd)
   @known_check_keys ~w(name run)
 

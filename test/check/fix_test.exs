@@ -31,61 +31,88 @@ defmodule CheckEscript.FixTest do
     end
   end
 
-  describe "run/0 - format fix" do
-    test "fixes format when marker exists" do
-      File.mkdir_p!(".check")
-      File.write!(".check/.format_failed", "")
+  describe "run/0 - simple commands" do
+    test "runs default fix commands" do
       File.rm(".check/credo.txt")
       File.rm(".check/credo_strict.txt")
 
-      expect(System, :cmd, fn "mix", ["format"], opts ->
-        assert opts[:stderr_to_stdout] == true
-        {"", 0}
-      end)
+      expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 
       output = capture_io(fn -> Fix.run() end)
 
-      assert output =~ "Format check failed previously"
-      assert output =~ "Format fixed successfully"
-      refute File.exists?(".check/.format_failed")
+      assert output =~ "Running: mix format"
+      assert output =~ "No credo files to fix"
+      assert output =~ "All fixes applied successfully"
     end
 
-    test "reports format fix failure" do
+    test "halts on command failure" do
       stub_halt()
-      File.mkdir_p!(".check")
-      File.write!(".check/.format_failed", "")
-      File.rm(".check/credo.txt")
-      File.rm(".check/credo_strict.txt")
 
-      expect(System, :cmd, fn "mix", ["format"], _opts ->
-        {"format error", 1}
-      end)
+      expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"error", 1} end)
 
       output =
         capture_io(fn ->
           catch_throw(Fix.run())
         end)
 
-      assert output =~ "Format fix failed"
-    end
-
-    test "skips format fix when no marker" do
-      File.rm(".check/.format_failed")
-      File.rm(".check/credo.txt")
-      File.rm(".check/credo_strict.txt")
-
-      output = capture_io(fn -> Fix.run() end)
-
-      assert output =~ "Format check passed"
-      assert output =~ "No credo errors found"
+      assert output =~ "mix format failed"
     end
   end
 
-  describe "run/0 - credo fix" do
-    test "runs recode on files from credo output" do
-      File.rm(".check/.format_failed")
+  describe "run/0 - on_credo_files" do
+    test "runs recode on credo-failing files" do
+      File.mkdir_p!(".check")
+      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n  ┃   lib/bar.ex:20:3\n")
+      File.rm(".check/credo_strict.txt")
+
+      expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
+
+      expect(System, :cmd, fn "mix", ["recode", "lib/bar.ex", "lib/foo.ex"], _opts ->
+        {"fixed", 0}
+      end)
+
+      output = capture_io(fn -> Fix.run() end)
+
+      assert output =~ "Running: mix recode (2 file(s))"
+      assert output =~ "lib/foo.ex"
+      assert output =~ "lib/bar.ex"
+      assert output =~ "All fixes applied successfully"
+    end
+
+    test "skips recode when no credo files" do
+      File.rm(".check/credo.txt")
+      File.rm(".check/credo_strict.txt")
+
+      expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
+
+      output = capture_io(fn -> Fix.run() end)
+
+      assert output =~ "No credo files to fix"
+      assert output =~ "All fixes applied successfully"
+    end
+
+    test "combines files from credo and credo_strict" do
       File.mkdir_p!(".check")
       File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n")
+      File.write!(".check/credo_strict.txt", "  ┃   lib/bar.ex:20:3\n")
+
+      expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
+
+      expect(System, :cmd, fn "mix", ["recode", "lib/bar.ex", "lib/foo.ex"], _opts ->
+        {"fixed", 0}
+      end)
+
+      output = capture_io(fn -> Fix.run() end)
+
+      assert output =~ "2 file(s)"
+    end
+
+    test "deduplicates files across credo outputs" do
+      File.mkdir_p!(".check")
+      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n")
+      File.write!(".check/credo_strict.txt", "  ┃   lib/foo.ex:20:3\n")
+
+      expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 
       expect(System, :cmd, fn "mix", ["recode", "lib/foo.ex"], _opts ->
         {"fixed", 0}
@@ -93,27 +120,21 @@ defmodule CheckEscript.FixTest do
 
       output = capture_io(fn -> Fix.run() end)
 
-      assert output =~ "Found 1 file(s) with issues"
-      assert output =~ "lib/foo.ex"
-      assert output =~ "Auto-fixes applied successfully"
+      assert output =~ "1 file(s)"
     end
+  end
 
-    test "reports recode failure" do
-      stub_halt()
-      File.rm(".check/.format_failed")
-      File.mkdir_p!(".check")
-      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n")
+  describe "run/0 - custom config" do
+    test "runs custom fix commands" do
+      config = %{"fix" => [%{"run" => "echo custom_fix"}]}
 
-      expect(System, :cmd, fn "mix", ["recode", "lib/foo.ex"], _opts ->
-        {"recode error", 1}
-      end)
+      expect(CheckEscript.Config, :load, fn -> {:ok, config} end)
+      expect(System, :cmd, fn "sh", ["-c", "echo custom_fix"], _opts -> {"done", 0} end)
 
-      output =
-        capture_io(fn ->
-          catch_throw(Fix.run())
-        end)
+      output = capture_io(fn -> Fix.run() end)
 
-      assert output =~ "Recode exited with errors"
+      assert output =~ "Running: echo custom_fix"
+      assert output =~ "All fixes applied successfully"
     end
   end
 end

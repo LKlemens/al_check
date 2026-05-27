@@ -1,80 +1,72 @@
 defmodule CheckEscript.Fix do
-  @moduledoc "Auto-fix mode for format and credo issues."
+  @moduledoc "Auto-fix mode — runs configurable fix commands."
+
+  @default_fix [
+    %{"run" => "mix format"},
+    %{"run" => "mix recode", "on_credo_files" => true}
+  ]
 
   def run do
-    IO.puts("Checking for failures to fix...\n")
+    IO.puts("Applying fixes...\n")
 
-    check_and_fix_format()
+    commands = load_fix_commands()
+    Enum.each(commands, &run_command/1)
 
-    IO.puts("\nReading stored credo outputs from check/...\n")
+    IO.puts([IO.ANSI.format([:green, "✓ All fixes applied successfully"])])
+  end
 
-    files =
-      [".check/credo.txt", ".check/credo_strict.txt"]
-      |> Enum.filter(&File.exists?/1)
-      |> Enum.flat_map(fn file ->
-        content = File.read!(file)
-        extract_files_from_credo_output(content)
-      end)
-      |> Enum.uniq()
-      |> Enum.sort()
+  defp run_command(%{"run" => cmd, "on_credo_files" => true}) do
+    files = load_credo_files()
 
     if Enum.empty?(files) do
-      IO.puts([
-        IO.ANSI.format([
-          :yellow,
-          "No credo errors found. Maybe rerun 'check --only credo'."
-        ]),
-        IO.ANSI.reset()
-      ])
+      IO.puts([IO.ANSI.format([:yellow, "No credo files to fix, skipping: #{cmd}\n"])])
     else
-      IO.puts("Found #{length(files)} file(s) with issues:\n")
-      Enum.each(files, fn file -> IO.puts("  - #{file}") end)
+      IO.puts([IO.ANSI.format([:cyan, "Running: #{cmd} (#{length(files)} file(s))"])])
+      Enum.each(files, fn f -> IO.puts("  - #{f}") end)
 
-      IO.puts([
-        "\n",
-        IO.ANSI.format([:yellow, "Running mix recode on #{length(files)} file(s)..."]),
-        IO.ANSI.reset(),
-        "\n"
-      ])
-
-      {output, status} = System.cmd("mix", ["recode" | files], stderr_to_stdout: true)
-      IO.puts(output)
-
-      if status == 0 do
-        IO.puts([
-          IO.ANSI.format([:green, "\n✓ Auto-fixes applied successfully"]),
-          IO.ANSI.reset()
-        ])
-      else
-        IO.puts([IO.ANSI.format([:red, "\n✗ Recode exited with errors"]), IO.ANSI.reset()])
-        System.halt(1)
-      end
+      [base | args] = String.split(cmd)
+      execute(base, args ++ files, cmd)
     end
   end
 
-  defp check_and_fix_format do
-    if File.exists?(".check/.format_failed") do
-      IO.puts([IO.ANSI.format([:red, "✗ Format check failed previously"])])
-      IO.puts([IO.ANSI.format([:yellow, "Running mix format to fix..."])])
+  defp run_command(%{"run" => cmd}) do
+    IO.puts([IO.ANSI.format([:cyan, "Running: #{cmd}"])])
+    execute("sh", ["-c", cmd], cmd)
+  end
 
-      {output, status} = System.cmd("mix", ["format"], stderr_to_stdout: true)
+  defp execute(bin, args, label) do
+    {output, status} = System.cmd(bin, args, stderr_to_stdout: true)
 
-      if status == 0 do
-        File.rm(".check/.format_failed")
-        IO.puts([IO.ANSI.format([:green, "✓ Format fixed successfully"])])
-      else
-        IO.puts(output)
-        IO.puts([IO.ANSI.format([:red, "✗ Format fix failed"])])
-        System.halt(1)
-      end
+    if status == 0 do
+      if output != "", do: IO.puts(output)
+      IO.puts([IO.ANSI.format([:green, "✓ #{label}\n"])])
     else
-      IO.puts([IO.ANSI.format([:green, "✓ Format check passed"])])
+      IO.puts(output)
+      IO.puts([IO.ANSI.format([:red, "✗ #{label} failed"])])
+      System.halt(1)
     end
+  end
+
+  defp load_credo_files do
+    [".check/credo.txt", ".check/credo_strict.txt"]
+    |> Enum.filter(&File.exists?/1)
+    |> Enum.flat_map(fn file ->
+      file |> File.read!() |> extract_files_from_credo_output()
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
   def extract_files_from_credo_output(output) do
     ~r/^\s*┃?\s+([^\s:]+\.exs?):\d+/m
     |> Regex.scan(output)
     |> Enum.map(fn [_, file] -> file end)
+  end
+
+  defp load_fix_commands do
+    case CheckEscript.Config.load() do
+      {:ok, config} when is_map_key(config, "fix") -> config["fix"]
+      _ -> @default_fix
+    end
   end
 end
