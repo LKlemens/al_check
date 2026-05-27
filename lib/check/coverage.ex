@@ -105,14 +105,10 @@ defmodule CheckEscript.Coverage do
   end
 
   defp report_coverage(percentage, dir, _limit) do
-    color = coverage_color(percentage)
+    color = if percentage >= 80, do: :green, else: :yellow
     IO.puts([IO.ANSI.format([color, "✓ Coverage: #{percentage}% | Report: #{dir}"])])
     :ok
   end
-
-  defp coverage_color(percentage) when percentage >= 80, do: :green
-  defp coverage_color(percentage) when percentage >= 50, do: :yellow
-  defp coverage_color(_percentage), do: :red
 
   defp compare_baseline(_percentage, nil), do: :ok
 
