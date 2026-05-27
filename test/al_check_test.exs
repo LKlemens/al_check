@@ -39,6 +39,15 @@ defmodule AlCheckTest do
     assert output =~ "All checks passed"
   end
 
+  test "--dir with multiple dirs" do
+    output =
+      capture_io(fn ->
+        CheckEscript.main(["--only", "format", "--dir", "test/a,test/b", "mock"])
+      end)
+
+    assert output =~ "All checks passed"
+  end
+
   test "--test-args stops at next check flag" do
     output =
       capture_io(fn ->

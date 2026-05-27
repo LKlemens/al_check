@@ -223,6 +223,31 @@ defmodule CheckEscript.TasksTest do
     end
 
     @tag :tmp_dir
+    test "counts files across multiple dirs", %{tmp_dir: tmp_dir} do
+      dir_a = Path.join(tmp_dir, "a")
+      dir_b = Path.join(tmp_dir, "b")
+      File.mkdir_p!(dir_a)
+      File.mkdir_p!(dir_b)
+      File.write!(Path.join(dir_a, "foo_test.exs"), "")
+      File.write!(Path.join(dir_b, "bar_test.exs"), "")
+
+      ExUnit.CaptureIO.capture_io(fn ->
+        result = Tasks.cap_partitions(3, "#{dir_a} #{dir_b}")
+        send(self(), {:result, result})
+      end)
+
+      assert_received {:result, 2}
+    end
+
+    @tag :tmp_dir
+    test "handles single dir as string", %{tmp_dir: tmp_dir} do
+      File.write!(Path.join(tmp_dir, "one_test.exs"), "")
+
+      result = Tasks.cap_partitions(1, tmp_dir)
+      assert result == 1
+    end
+
+    @tag :tmp_dir
     test "keeps partitions when enough files", %{tmp_dir: tmp_dir} do
       for i <- 1..5 do
         File.write!(Path.join(tmp_dir, "test_#{i}_test.exs"), "")

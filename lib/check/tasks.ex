@@ -135,12 +135,14 @@ defmodule CheckEscript.Tasks do
   end
 
   def cap_partitions(partitions, test_dir) do
+    dirs = if test_dir, do: String.split(test_dir), else: ["test"]
+
     test_file_count =
-      Path.wildcard("#{test_dir || "test"}/**/*_test.exs") |> length()
+      dirs |> Enum.flat_map(&Path.wildcard("#{&1}/**/*_test.exs")) |> Enum.uniq() |> length()
 
     cond do
       test_file_count == 0 ->
-        IO.puts([IO.ANSI.format([:yellow, "No test files found in #{test_dir || "test"}/"])])
+        IO.puts([IO.ANSI.format([:yellow, "No test files found in #{Enum.join(dirs, ", ")}"])])
         0
 
       test_file_count < partitions ->
@@ -177,9 +179,11 @@ defmodule CheckEscript.Tasks do
     end)
   end
 
-  defp expand_check(:test, partitions) do
+  defp expand_check(:test, partitions) when partitions > 0 do
     for partition <- 1..partitions, do: String.to_atom("test_#{partition}")
   end
+
+  defp expand_check(:test, _), do: []
 
   defp expand_check(check, _partitions), do: [check]
 end
