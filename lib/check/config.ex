@@ -21,7 +21,7 @@ defmodule CheckEscript.Config do
     "modified_test_modules" => %{
       "name" => "Modified Test Modules",
       "run" =>
-        "files=$(git diff --name-only --diff-filter=d master... -- 'test/**/*_test.exs'); if [ -z \"$files\" ]; then echo 'No modified test files on this branch'; else echo \"Running: \n$files\"; echo $files | xargs mix test; fi"
+        "files=$(git diff --name-only --diff-filter=d {base_branch}... -- 'test/**/*_test.exs'); if [ -z \"$files\" ]; then echo 'No modified test files on this branch'; else echo \"Running: \n$files\"; echo $files | xargs mix test; fi"
     }
   }
 
@@ -34,6 +34,7 @@ defmodule CheckEscript.Config do
                       "max_concurrency" => 10,
                       "test_args" => "--warnings-as-errors",
                       "default_repeat" => 100,
+                      "base_branch" => "master",
                       "coverage" => %{"mod" => "native", "limit" => 80, "html" => false},
                       "checks" => @default_checks
                     },

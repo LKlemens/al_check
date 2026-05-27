@@ -30,10 +30,13 @@ defmodule CheckEscript.Tasks do
       )
     end
 
+    base_branch = config["base_branch"] || "master"
+
     checks_config
     |> Map.drop(["test"])
     |> Enum.map(fn {key, value} ->
       {name, cmd, args} = Config.parse_check_config(key, value)
+      args = replace_base_branch(args, base_branch)
       {String.to_atom(key), {name, cmd, args}}
     end)
     |> Map.new()
@@ -165,6 +168,13 @@ defmodule CheckEscript.Tasks do
     schedulers = :erlang.system_info(:schedulers_online)
     procs = floor(schedulers / partitions)
     if procs > 0, do: procs, else: 1
+  end
+
+  defp replace_base_branch(args, base_branch) do
+    Enum.map(args, fn
+      arg when is_binary(arg) -> String.replace(arg, "{base_branch}", base_branch)
+      arg -> arg
+    end)
   end
 
   defp expand_check(:test, partitions) do

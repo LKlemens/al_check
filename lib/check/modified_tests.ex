@@ -7,7 +7,8 @@ defmodule CheckEscript.ModifiedTests do
   """
 
   def run do
-    modified_files = get_modified_test_files()
+    base_branch = load_base_branch()
+    modified_files = get_modified_test_files(base_branch)
 
     if Enum.empty?(modified_files) do
       IO.puts("No modified test files on this branch")
@@ -18,8 +19,15 @@ defmodule CheckEscript.ModifiedTests do
     end
   end
 
-  defp get_modified_test_files do
-    case System.cmd("git", ["diff", "--name-only", "--diff-filter=d", "master...", "--", "test/**/*_test.exs"],
+  defp load_base_branch do
+    case CheckEscript.Config.load() do
+      {:ok, config} -> config["base_branch"] || "master"
+      _ -> "master"
+    end
+  end
+
+  defp get_modified_test_files(base_branch) do
+    case System.cmd("git", ["diff", "--name-only", "--diff-filter=d", "#{base_branch}...", "--", "test/**/*_test.exs"],
            stderr_to_stdout: true
          ) do
       {output, 0} ->
@@ -47,7 +55,8 @@ defmodule CheckEscript.ModifiedTests do
   end
 
   defp get_changed_lines(file) do
-    {output, _status} = System.cmd("git", ["diff", "-U0", "master...", "--", file], stderr_to_stdout: true)
+    base_branch = load_base_branch()
+    {output, _status} = System.cmd("git", ["diff", "-U0", "#{base_branch}...", "--", file], stderr_to_stdout: true)
 
     # Parse @@ hunk headers: @@ -old,count +new,count @@
     ~r/@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
