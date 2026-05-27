@@ -44,6 +44,7 @@ defmodule CheckEscript.Runner do
   end
 
   defp run_builtin("modified_tests"), do: CheckEscript.ModifiedTests.run()
+  defp run_builtin("modified_test_modules"), do: CheckEscript.ModifiedTestModules.run()
 
   defp run_builtin(name) do
     IO.puts(:stderr, "Unknown builtin: #{name}")

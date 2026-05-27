@@ -1,6 +1,6 @@
 defmodule CheckEscript.ModifiedTests do
   @moduledoc """
-  Detects modified tests on the current branch vs master.
+  Detects modified tests on the current branch vs base branch.
 
   - If setup/setup_all/describe changed → runs the whole file
   - Otherwise → runs only the specific modified test lines
@@ -21,8 +21,8 @@ defmodule CheckEscript.ModifiedTests do
 
   defp load_base_branch do
     case CheckEscript.Config.load() do
-      {:ok, config} -> config["base_branch"] || "master"
-      _ -> "master"
+      {:ok, config} -> config["base_branch"] || "main"
+      _ -> "main"
     end
   end
 
