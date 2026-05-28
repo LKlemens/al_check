@@ -145,7 +145,8 @@ defmodule CheckEscript do
 
     verbose = opts[:verbose] || false
     test_cmd = Tasks.build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
-    {results, total_seconds} = Runner.run_checks(tasks, repeat, test_cmd, max_concurrency, verbose)
+    test_opts = %{repeat: repeat, test_args: test_args}
+    {results, total_seconds} = Runner.run_checks(tasks, test_opts, test_cmd, max_concurrency, verbose)
     Summary.print(results, total_seconds, tasks, coverage)
   end
 
@@ -206,5 +207,5 @@ defmodule CheckEscript do
   end
 
   defp parse_dirs(nil), do: nil
-  defp parse_dirs(dir), do: dir |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.join(" ")
+  defp parse_dirs(dir), do: dir |> String.split(",") |> Enum.map_join(" ", &String.trim/1)
 end

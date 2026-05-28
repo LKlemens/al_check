@@ -63,29 +63,27 @@ defmodule CheckEscript.RunnerTest do
     end
   end
 
-  describe "run_check/3 builtin" do
-    test "calls builtin module and returns status" do
+  describe "builtin modules" do
+    test "modified_tests returns status tuple" do
       io =
         capture_io(fn ->
-          {status, output} = Runner.run_check(:builtin, ["modified_tests"], false)
+          {status, output} = CheckEscript.ModifiedTests.run()
           send(self(), {:result, status, output})
         end)
 
-      assert_received {:result, status, ""}
-      assert status == 0
-      # may print git error or "No modified test files" — both are fine
+      assert_received {:result, 0, ""}
       assert io =~ "git diff failed" or io =~ "No modified test files"
     end
 
-    test "returns error for unknown builtin" do
+    test "modified_test_modules returns status tuple" do
       io =
-        capture_io(:stderr, fn ->
-          {status, _output} = Runner.run_check(:builtin, ["nonexistent"], false)
-          send(self(), {:status, status})
+        capture_io(fn ->
+          {status, output} = CheckEscript.ModifiedTestModules.run()
+          send(self(), {:result, status, output})
         end)
 
-      assert_received {:status, 1}
-      assert io =~ "Unknown builtin"
+      assert_received {:result, 0, ""}
+      assert io =~ "git diff failed" or io =~ "No modified test files"
     end
   end
 

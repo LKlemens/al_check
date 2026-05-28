@@ -6,16 +6,16 @@ defmodule CheckEscript.ModifiedTests do
   - Otherwise → runs only the specific modified test lines
   """
 
-  def run do
+  def run(test_opts \\ %{}) do
     base_branch = load_base_branch()
     modified_files = get_modified_test_files(base_branch)
 
     if Enum.empty?(modified_files) do
       IO.puts("No modified test files on this branch")
-      0
+      {0, ""}
     else
       test_targets = Enum.flat_map(modified_files, &targets_for_file/1)
-      run_tests(test_targets)
+      run_tests(test_targets, test_opts)
     end
   end
 
@@ -110,12 +110,21 @@ defmodule CheckEscript.ModifiedTests do
     end)
   end
 
-  defp run_tests(targets) do
-    IO.puts([IO.ANSI.format([:cyan, "\nRunning #{length(targets)} test target(s)...\n"])])
+  defp run_tests(targets, test_opts) do
+    extra = extra_args(test_opts)
+    args = ["test" | targets] ++ extra
 
-    port =
-      CheckEscript.Port.open("mix", ["test" | targets])
+    extra_str = Enum.join(extra, " ")
+    IO.puts([IO.ANSI.format([:cyan, "\nTest command: mix test [#{length(targets)} files] #{extra_str}\n"])])
 
-    CheckEscript.Runner.stream_port_output(port)
+    port = CheckEscript.Port.open("mix", args)
+    status = CheckEscript.Runner.stream_port_output(port)
+    {status, ""}
+  end
+
+  defp extra_args(opts) do
+    test_args = if opts[:test_args], do: String.split(opts[:test_args]), else: []
+    repeat = if opts[:repeat], do: ["--repeat-until-failure", to_string(opts[:repeat])], else: []
+    test_args ++ repeat
   end
 end

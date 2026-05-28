@@ -1,19 +1,29 @@
 defmodule CheckEscript.ModifiedTestModules do
   @moduledoc "Runs whole test files that were added or modified on the current branch."
 
-  def run do
+  def run(test_opts \\ %{}) do
     base_branch = load_base_branch()
     files = get_modified_test_files(base_branch)
 
     if Enum.empty?(files) do
       IO.puts("No modified test files on this branch")
-      0
+      {0, ""}
     else
-      IO.puts("Running:\n#{Enum.join(files, "\n")}")
+      args = ["test" | files] ++ extra_args(test_opts)
 
-      port = CheckEscript.Port.open("mix", ["test" | files])
-      CheckEscript.Runner.stream_port_output(port)
+      repeat_str = Enum.join(extra_args(test_opts), " ")
+      IO.puts([IO.ANSI.format([:cyan, "Test command: mix test [#{length(files)} files] #{repeat_str}\n"])])
+
+      port = CheckEscript.Port.open("mix", args)
+      status = CheckEscript.Runner.stream_port_output(port)
+      {status, ""}
     end
+  end
+
+  defp extra_args(opts) do
+    test_args = if opts[:test_args], do: String.split(opts[:test_args]), else: []
+    repeat = if opts[:repeat], do: ["--repeat-until-failure", to_string(opts[:repeat])], else: []
+    test_args ++ repeat
   end
 
   defp load_base_branch do

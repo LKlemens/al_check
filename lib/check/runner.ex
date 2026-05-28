@@ -3,13 +3,13 @@ defmodule CheckEscript.Runner do
 
   alias CheckEscript.{Failed, Tasks, UI}
 
-  def run_checks(tasks, _repeat, test_cmd, max_concurrency, verbose) do
+  def run_checks(tasks, test_opts, test_cmd, max_concurrency, verbose) do
     print_header(tasks, test_cmd)
 
     start_time = System.monotonic_time(:millisecond)
     {:ok, dot_counter_pid} = Agent.start_link(fn -> %{} end)
 
-    results = execute_tasks(tasks, dot_counter_pid, max_concurrency, verbose)
+    results = execute_tasks(tasks, dot_counter_pid, max_concurrency, verbose, test_opts)
 
     Agent.stop(dot_counter_pid)
     total_seconds = elapsed_seconds(start_time)
@@ -28,11 +28,6 @@ defmodule CheckEscript.Runner do
     end
   end
 
-  def run_check(:builtin, [name], _verbose) do
-    status = run_builtin(name)
-    {status, ""}
-  end
-
   def run_check(cmd, args, false) do
     {output, status} = System.cmd(cmd, args, stderr_to_stdout: true)
     {status, output}
@@ -43,12 +38,12 @@ defmodule CheckEscript.Runner do
     collect_and_stream_output(port, "")
   end
 
-  defp run_builtin("modified_tests"), do: CheckEscript.ModifiedTests.run()
-  defp run_builtin("modified_test_modules"), do: CheckEscript.ModifiedTestModules.run()
+  defp run_builtin("modified_tests", opts), do: CheckEscript.ModifiedTests.run(opts)
+  defp run_builtin("modified_test_modules", opts), do: CheckEscript.ModifiedTestModules.run(opts)
 
-  defp run_builtin(name) do
+  defp run_builtin(name, _opts) do
     IO.puts(:stderr, "Unknown builtin: #{name}")
-    1
+    {1, ""}
   end
 
   # -- Private --
@@ -64,7 +59,7 @@ defmodule CheckEscript.Runner do
     IO.puts("Available schedulers: #{schedulers}\n")
   end
 
-  defp execute_tasks(tasks, dot_counter_pid, max_concurrency, verbose) do
+  defp execute_tasks(tasks, dot_counter_pid, max_concurrency, verbose, test_opts) do
     task_count = length(tasks)
 
     if not verbose do
@@ -76,7 +71,7 @@ defmodule CheckEscript.Runner do
     tasks
     |> Enum.with_index()
     |> Task.async_stream(
-      fn {task, index} -> execute_task(task, index, task_count, dot_counter_pid, verbose) end,
+      fn {task, index} -> execute_task(task, index, task_count, dot_counter_pid, verbose, test_opts) end,
       timeout: :infinity,
       ordered: false,
       max_concurrency: max_concurrency
@@ -87,7 +82,7 @@ defmodule CheckEscript.Runner do
     end)
   end
 
-  defp execute_task({name, cmd, args, partition, total_partitions}, index, task_count, dot_counter_pid, verbose) do
+  defp execute_task({name, cmd, args, partition, total_partitions}, index, task_count, dot_counter_pid, verbose, _test_opts) do
     Process.sleep((rem(index, total_partitions) + 1) * 200)
 
     {status, output} =
@@ -102,7 +97,12 @@ defmodule CheckEscript.Runner do
     {name, index, status, output, {total, failures}}
   end
 
-  defp execute_task({name, cmd, args}, index, _task_count, _dot_counter_pid, verbose) do
+  defp execute_task({name, :builtin, args}, index, _task_count, _dot_counter_pid, _verbose, test_opts) do
+    {status, output} = run_builtin(hd(args), test_opts)
+    {name, index, status, output, nil}
+  end
+
+  defp execute_task({name, cmd, args}, index, _task_count, _dot_counter_pid, verbose, _test_opts) do
     {status, output} = run_check(cmd, args, verbose)
     {name, index, status, output, nil}
   end
