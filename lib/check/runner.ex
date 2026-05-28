@@ -9,9 +9,7 @@ defmodule CheckEscript.Runner do
     start_time = System.monotonic_time(:millisecond)
     {:ok, dot_counter_pid} = Agent.start_link(fn -> %{} end)
 
-    spinner = if not verbose, do: CheckEscript.Spinner.start()
     results = execute_tasks(tasks, dot_counter_pid, max_concurrency, verbose, test_opts)
-    if spinner, do: CheckEscript.Spinner.stop(spinner)
 
     Agent.stop(dot_counter_pid)
     total_seconds = elapsed_seconds(start_time)

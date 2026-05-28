@@ -24,10 +24,12 @@ defmodule CheckEscript.Config do
     }
   }
 
+  @default_run ["format", "compile", "compile_test", "dialyzer", "credo", "credo_strict", "test"]
   @default_fast ["format", "compile", "compile_test", "credo", "credo_strict"]
 
   @default_config Jason.encode!(
                     %{
+                      "run" => @default_run,
                       "fast" => @default_fast,
                       "partitions" => 3,
                       "max_concurrency" => 10,
@@ -44,6 +46,7 @@ defmodule CheckEscript.Config do
                   )
 
   def default_checks, do: @default_checks
+  def default_run, do: @default_run
   def default_fast, do: @default_fast
 
   def load do
@@ -137,7 +140,7 @@ defmodule CheckEscript.Config do
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  @known_keys ~w(fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix)
+  @known_keys ~w(run fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix)
   @known_coverage_keys ~w(mod limit html baseline_cmd)
   @known_check_keys ~w(name run)
 

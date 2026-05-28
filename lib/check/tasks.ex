@@ -78,7 +78,7 @@ defmodule CheckEscript.Tasks do
       case {opts[:fast], opts[:only]} do
         {true, _} -> select_fast(all_tasks, config)
         {_, only} when is_binary(only) -> select_only(all_tasks, only, partitions)
-        {_, nil} -> Map.values(all_tasks)
+        {_, nil} -> select_default(all_tasks, config, partitions)
       end
 
     if Enum.empty?(tasks) do
@@ -87,6 +87,15 @@ defmodule CheckEscript.Tasks do
     end
 
     tasks
+  end
+
+  defp select_default(all_tasks, config, partitions) do
+    (config["run"] || Config.default_run())
+    |> Enum.map(fn name -> String.to_atom(to_string(name)) end)
+    |> Enum.flat_map(&expand_check(&1, partitions))
+    |> Enum.uniq()
+    |> Enum.map(&Map.get(all_tasks, &1))
+    |> Enum.reject(&is_nil/1)
   end
 
   defp select_fast(all_tasks, config) do
