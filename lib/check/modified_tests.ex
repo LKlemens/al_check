@@ -115,7 +115,7 @@ defmodule CheckEscript.ModifiedTests do
     args = ["test" | targets] ++ extra
 
     extra_str = Enum.join(extra, " ")
-    IO.puts([IO.ANSI.format([:cyan, "\nTest command: mix test [#{length(targets)} files] #{extra_str}\n"])])
+    IO.puts([IO.ANSI.format([:cyan, "\nTest command: mix test [#{length(targets)} tests] #{extra_str}\n"])])
 
     port = CheckEscript.Port.open("mix", args)
     status = CheckEscript.Runner.stream_port_output(port)

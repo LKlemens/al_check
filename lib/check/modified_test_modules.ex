@@ -12,8 +12,10 @@ defmodule CheckEscript.ModifiedTestModules do
     else
       args = ["test" | files] ++ extra_args(test_opts)
 
-      repeat_str = Enum.join(extra_args(test_opts), " ")
-      IO.puts([IO.ANSI.format([:cyan, "Test command: mix test [#{length(files)} files] #{repeat_str}\n"])])
+      Enum.each(files, fn f -> IO.puts([IO.ANSI.format([:cyan, "  #{f}"])]) end)
+
+      extra_str = Enum.join(extra_args(test_opts), " ")
+      IO.puts([IO.ANSI.format([:cyan, "\nTest command: mix test [#{length(files)} modules] #{extra_str}\n"])])
 
       port = CheckEscript.Port.open("mix", args)
       status = CheckEscript.Runner.stream_port_output(port)
