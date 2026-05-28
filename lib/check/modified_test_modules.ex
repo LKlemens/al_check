@@ -2,7 +2,8 @@ defmodule CheckEscript.ModifiedTestModules do
   @moduledoc "Runs whole test files that were added or modified on the current branch."
 
   def run(test_opts \\ %{}) do
-    base_branch = load_base_branch()
+    config = load_config()
+    base_branch = CheckEscript.Config.base_branch(config)
     files = get_modified_test_files(base_branch)
 
     if Enum.empty?(files) do
@@ -26,10 +27,10 @@ defmodule CheckEscript.ModifiedTestModules do
     test_args ++ repeat
   end
 
-  defp load_base_branch do
+  defp load_config do
     case CheckEscript.Config.load() do
-      {:ok, config} -> config["base_branch"] || "master"
-      _ -> "master"
+      {:ok, config} -> config
+      _ -> %{}
     end
   end
 

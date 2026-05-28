@@ -30,7 +30,7 @@ defmodule CheckEscript.Tasks do
       )
     end
 
-    base_branch = config["base_branch"] || "main"
+    base_branch = Config.base_branch(config)
 
     checks_config
     |> Map.drop(["test"])

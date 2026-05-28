@@ -33,7 +33,6 @@ defmodule CheckEscript.Config do
                       "max_concurrency" => 10,
                       "test_args" => "--warnings-as-errors",
                       "default_repeat" => 100,
-                      "base_branch" => "main",
                       "fix" => [
                         %{"run" => "mix format"},
                         %{"run" => "mix recode", "on_credo_files" => true}
@@ -103,6 +102,32 @@ defmodule CheckEscript.Config do
   def parse_check_config(key, %{"run" => run} = config) do
     name = config["name"] || humanize_key(key)
     {name, "sh", ["-c", run]}
+  end
+
+  def base_branch(config) do
+    config["base_branch"] || detect_base_branch()
+  end
+
+  defp detect_base_branch do
+    branch =
+      cond do
+        branch_exists?("main") -> "main"
+        branch_exists?("master") -> "master"
+        true ->
+          IO.puts(
+            :stderr,
+            "Could not detect base branch (tried main, master). Set \"base_branch\" in .check.json"
+          )
+
+          System.halt(1)
+      end
+
+    IO.puts("Detected base git branch: #{branch}")
+    branch
+  end
+
+  defp branch_exists?(name) do
+    match?({_, 0}, System.cmd("git", ["rev-parse", "--verify", "--quiet", name], stderr_to_stdout: true))
   end
 
   def humanize_key(key) do

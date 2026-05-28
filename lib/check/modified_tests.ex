@@ -7,22 +7,23 @@ defmodule CheckEscript.ModifiedTests do
   """
 
   def run(test_opts \\ %{}) do
-    base_branch = load_base_branch()
+    config = load_config()
+    base_branch = CheckEscript.Config.base_branch(config)
     modified_files = get_modified_test_files(base_branch)
 
     if Enum.empty?(modified_files) do
       IO.puts("No modified test files on this branch")
       {0, ""}
     else
-      test_targets = Enum.flat_map(modified_files, &targets_for_file/1)
+      test_targets = Enum.flat_map(modified_files, &targets_for_file(&1, base_branch))
       run_tests(test_targets, test_opts)
     end
   end
 
-  defp load_base_branch do
+  defp load_config do
     case CheckEscript.Config.load() do
-      {:ok, config} -> config["base_branch"] || "main"
-      _ -> "main"
+      {:ok, config} -> config
+      _ -> %{}
     end
   end
 
@@ -39,8 +40,8 @@ defmodule CheckEscript.ModifiedTests do
     end
   end
 
-  defp targets_for_file(file) do
-    changed_lines = get_changed_lines(file)
+  defp targets_for_file(file, base_branch) do
+    changed_lines = get_changed_lines(file, base_branch)
 
     if Enum.empty?(changed_lines) do
       []
@@ -54,8 +55,7 @@ defmodule CheckEscript.ModifiedTests do
     end
   end
 
-  defp get_changed_lines(file) do
-    base_branch = load_base_branch()
+  defp get_changed_lines(file, base_branch) do
     {output, _status} = System.cmd("git", ["diff", "-U0", "#{base_branch}...", "--", file], stderr_to_stdout: true)
 
     # Parse @@ hunk headers: @@ -old,count +new,count @@

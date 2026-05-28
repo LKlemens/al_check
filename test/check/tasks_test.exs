@@ -108,8 +108,13 @@ defmodule CheckEscript.TasksTest do
     test "uses custom checks from config" do
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
       config = %{"checks" => %{"lint" => %{"name" => "Lint", "run" => "mix lint"}}}
-      tasks = Tasks.define(false, 0, nil, nil, nil, config, coverage)
 
+      ExUnit.CaptureIO.capture_io(fn ->
+        tasks = Tasks.define(false, 0, nil, nil, nil, config, coverage)
+        send(self(), {:tasks, tasks})
+      end)
+
+      assert_received {:tasks, tasks}
       assert Map.has_key?(tasks, :lint)
       refute Map.has_key?(tasks, :format)
     end
@@ -126,8 +131,10 @@ defmodule CheckEscript.TasksTest do
 
       output =
         ExUnit.CaptureIO.capture_io(:stderr, fn ->
-          tasks = Tasks.define(false, 0, nil, nil, nil, config, coverage)
-          send(self(), {:tasks, tasks})
+          ExUnit.CaptureIO.capture_io(fn ->
+            tasks = Tasks.define(false, 0, nil, nil, nil, config, coverage)
+            send(self(), {:tasks, tasks})
+          end)
         end)
 
       assert output =~ "\"test\" in checks is ignored"
@@ -139,13 +146,21 @@ defmodule CheckEscript.TasksTest do
     test "resolves {partition} placeholder in test_args" do
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
-      tasks =
-        Tasks.define(false, 2, nil, "--cover --export-coverage partition-{partition}", nil, %{}, coverage)
+      ExUnit.CaptureIO.capture_io(fn ->
+        tasks =
+          Tasks.define(false, 2, nil, "--cover --export-coverage partition-{partition}", nil, %{}, coverage)
 
-      {_name, "sh", ["-c", cmd], 1, 2} = tasks[:test_1]
+        {_name, "sh", ["-c", cmd], 1, 2} = tasks[:test_1]
+        send(self(), {:cmd1, cmd})
+
+        {_name, "sh", ["-c", cmd2], 2, 2} = tasks[:test_2]
+        send(self(), {:cmd2, cmd2})
+      end)
+
+      assert_received {:cmd1, cmd}
       assert cmd =~ "--export-coverage partition-1"
 
-      {_name, "sh", ["-c", cmd2], 2, 2} = tasks[:test_2]
+      assert_received {:cmd2, cmd2}
       assert cmd2 =~ "--export-coverage partition-2"
     end
   end
