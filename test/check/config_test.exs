@@ -95,12 +95,42 @@ defmodule CheckEscript.ConfigTest do
     end
   end
 
+  describe "default_run/0" do
+    test "returns list of default checks to run" do
+      run = Config.default_run()
+      assert is_list(run)
+      assert "format" in run
+      assert "compile" in run
+      assert "test" in run
+      refute "modified_tests" in run
+      refute "modified_test_modules" in run
+    end
+  end
+
   describe "default_fast/0" do
     test "returns list of strings" do
       fast = Config.default_fast()
       assert is_list(fast)
       assert "format" in fast
       assert "compile" in fast
+    end
+  end
+
+  describe "base_branch/1" do
+    test "uses config value when set" do
+      assert Config.base_branch(%{"base_branch" => "develop"}) == "develop"
+    end
+
+    test "auto-detects when not set" do
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          branch = Config.base_branch(%{})
+          send(self(), {:branch, branch})
+        end)
+
+      assert_received {:branch, branch}
+      assert branch in ["main", "master"]
+      assert output =~ "Detected base git branch"
     end
   end
 

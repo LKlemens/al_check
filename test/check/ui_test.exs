@@ -68,41 +68,67 @@ defmodule CheckEscript.UITest do
       output = capture_io(fn -> UI.update_task_line(0, "Tests (1/2)", 0, 1, {50, 0}) end)
       assert output =~ "50 tests"
     end
+
+    test "shows failure count" do
+      output = capture_io(fn -> UI.update_task_line(0, "Tests (1/2)", 1, 1, {100, 5}) end)
+      assert output =~ "5/100"
+    end
+
+    test "shows running with test counts" do
+      output = capture_io(fn -> UI.update_task_line(0, "Tests (1/2)", :running, 1, {30, 0}) end)
+      assert output =~ "30 tests"
+    end
+
+    test "shows running without test counts" do
+      output = capture_io(fn -> UI.update_task_line(0, "Credo", :running, 1, nil) end)
+      assert output =~ "RUNNING"
+    end
   end
 
   describe "update_loop/4" do
-    test "updates and stops on :stop message" do
-      {:ok, agent} = Agent.start_link(fn -> %{"partition_1_total" => 42, "partition_1_failures" => 0} end)
+    test "stops immediately on :stop message" do
+      {:ok, agent} = Agent.start_link(fn -> %{} end)
 
-      pid =
-        spawn(fn ->
-          capture_io(fn ->
-            UI.update_loop(0, "Tests (1/2)", 1, agent)
-          end)
+      task =
+        Task.async(fn ->
+          capture_io(fn -> UI.update_loop(0, "Tests (1/2)", 1, agent) end)
         end)
 
-      # Let it tick once
-      Process.sleep(100)
-      send(pid, :stop)
-      Process.sleep(50)
-      refute Process.alive?(pid)
+      send(task.pid, :stop)
+      Task.await(task, 1000)
+      Agent.stop(agent)
+    end
+
+    test "ticks and updates with test counts" do
+      {:ok, agent} =
+        Agent.start_link(fn ->
+          %{"partition_1_total" => 42, "partition_1_failures" => 0}
+        end)
+
+      task =
+        Task.async(fn ->
+          capture_io(fn -> UI.update_loop(0, "Tests (1/2)", 1, agent) end)
+        end)
+
+      Process.sleep(1100)
+      send(task.pid, :stop)
+      output = Task.await(task, 1000)
+      assert output =~ "42 tests"
       Agent.stop(agent)
     end
 
     test "handles non-test task names" do
       {:ok, agent} = Agent.start_link(fn -> %{} end)
 
-      pid =
-        spawn(fn ->
-          capture_io(fn ->
-            UI.update_loop(0, "Formatting", 1, agent)
-          end)
+      task =
+        Task.async(fn ->
+          capture_io(fn -> UI.update_loop(0, "Formatting", 1, agent) end)
         end)
 
-      Process.sleep(100)
-      send(pid, :stop)
-      Process.sleep(50)
-      refute Process.alive?(pid)
+      Process.sleep(1100)
+      send(task.pid, :stop)
+      output = Task.await(task, 1000)
+      assert output =~ "RUNNING"
       Agent.stop(agent)
     end
   end

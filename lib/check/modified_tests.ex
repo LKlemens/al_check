@@ -71,7 +71,7 @@ defmodule CheckEscript.ModifiedTests do
     end)
   end
 
-  defp setup_or_describe_changed?(file, changed_lines) do
+  def setup_or_describe_changed?(file, changed_lines) do
     lines = File.read!(file) |> String.split("\n")
 
     Enum.any?(changed_lines, fn line_num ->
@@ -80,7 +80,7 @@ defmodule CheckEscript.ModifiedTests do
     end)
   end
 
-  defp find_test_lines(file, changed_lines) do
+  def find_test_lines(file, changed_lines) do
     lines = File.read!(file) |> String.split("\n")
 
     # For each changed line, walk up to find the nearest `test "` definition
@@ -102,7 +102,7 @@ defmodule CheckEscript.ModifiedTests do
   end
 
   # Walk backwards from changed_line to find the nearest `test "` or `test(`
-  defp find_enclosing_test(lines, line_num) do
+  def find_enclosing_test(lines, line_num) do
     line_num..1//-1
     |> Enum.find(fn num ->
       line = Enum.at(lines, num - 1, "")
