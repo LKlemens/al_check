@@ -21,6 +21,7 @@ defmodule CheckEscript do
       check --watch                        # Monitor test partition files in real-time
       check --test-args "--exclude slow"   # Replace default --warnings-as-errors with custom args
       check --verbose                     # Print test output directly instead of partition status
+      check --coverage                    # Show coverage report (cached if unchanged)
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
 
   ## Available checks
@@ -94,7 +95,7 @@ defmodule CheckEscript do
   When `checks` is provided, it replaces all built-in checks (test partitions are always added).
   """
 
-  alias CheckEscript.{Config, Failed, Fix, Runner, Summary, Tasks, Watch}
+  alias CheckEscript.{Config, Coverage, Failed, Fix, Runner, Summary, Tasks, Watch}
 
   @version Mix.Project.config()[:version]
 
@@ -121,8 +122,23 @@ defmodule CheckEscript do
       opts[:help] -> print_help()
       opts[:watch] -> Watch.run()
       opts[:failed] -> Failed.run(opts[:repeat])
+      opts[:coverage] -> run_coverage(config)
       fix_mode -> Fix.run()
       true -> run_checks(opts, mock_mode, config)
+    end
+  end
+
+  defp run_coverage(config) do
+    coverage = Config.parse_coverage(config["coverage"])
+
+    if coverage.mod == false do
+      IO.puts(:stderr, "Coverage not configured. Set \"coverage\" in .check.json")
+      System.halt(1)
+    end
+
+    case Coverage.merge(coverage) do
+      :failed -> System.halt(1)
+      :ok -> :ok
     end
   end
 
@@ -150,7 +166,7 @@ defmodule CheckEscript do
     Summary.print(results, total_seconds, tasks, coverage)
   end
 
-  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help -h --init --version -v)
+  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help -h --init --version -v --coverage)
 
   defp parse_args(args) do
     {check_args, test_args} = split_test_args(args)
@@ -169,7 +185,8 @@ defmodule CheckEscript do
           repeat: :integer,
           help: :boolean,
           init: :boolean,
-          version: :boolean
+          version: :boolean,
+          coverage: :boolean
         ],
         aliases: [h: :help, v: :version]
       )
