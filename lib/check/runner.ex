@@ -9,7 +9,9 @@ defmodule CheckEscript.Runner do
     start_time = System.monotonic_time(:millisecond)
     {:ok, dot_counter_pid} = Agent.start_link(fn -> %{} end)
 
+    spinner = if not verbose, do: CheckEscript.Spinner.start()
     results = execute_tasks(tasks, dot_counter_pid, max_concurrency, verbose, test_opts)
+    if spinner, do: CheckEscript.Spinner.stop(spinner)
 
     Agent.stop(dot_counter_pid)
     total_seconds = elapsed_seconds(start_time)
@@ -18,10 +20,19 @@ defmodule CheckEscript.Runner do
   end
 
   def stream_port_output(port) do
+    spinner = CheckEscript.Spinner.start()
+    status = do_stream_port_output(port, spinner)
+    CheckEscript.Spinner.stop(spinner)
+    status
+  end
+
+  defp do_stream_port_output(port, spinner) do
     receive do
       {^port, {:data, data}} ->
+        CheckEscript.Spinner.stop(spinner)
         IO.binwrite(:stdio, data)
-        stream_port_output(port)
+        new_spinner = CheckEscript.Spinner.start()
+        do_stream_port_output(port, new_spinner)
 
       {^port, {:exit_status, status}} ->
         status

@@ -36,16 +36,16 @@ defmodule Mix.Tasks.Check.Install do
     # Get the al_check dependency path or current directory
     check_path = get_check_path()
 
-    Mix.shell().info("Building escript in #{check_path}...")
+    spinner = CheckEscript.Spinner.start("Building escript in #{check_path}")
 
-    # Build the escript
     case build_escript(check_path) do
       :ok ->
-        Mix.shell().info("Installing escript globally...")
+        CheckEscript.Spinner.stop(spinner)
+        spinner2 = CheckEscript.Spinner.start("Installing escript globally")
 
-        # Install the escript
         case install_escript(check_path) do
           :ok ->
+            CheckEscript.Spinner.stop(spinner2)
             Mix.shell().info("""
 
             \e[35m        @@          \e[0m
@@ -76,10 +76,12 @@ defmodule Mix.Tasks.Check.Install do
             Mix.shell().info("    check -v           # Show version\n")
 
           {:error, reason} ->
+            CheckEscript.Spinner.stop(spinner2)
             Mix.raise("Failed to install escript: #{reason}")
         end
 
       {:error, reason} ->
+        CheckEscript.Spinner.stop(spinner)
         Mix.raise("Failed to build escript: #{reason}")
     end
   end
