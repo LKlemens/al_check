@@ -73,7 +73,7 @@ defmodule CheckEscript.Runner do
 
     if not verbose do
       Enum.each(tasks, fn task ->
-        IO.puts([IO.ANSI.format([:yellow, "  • #{String.pad_trailing(elem(task, 0), 25)} [RUNNING]"])])
+        IO.puts("  • #{String.pad_trailing(elem(task, 0), 25)} [RUNNING]")
       end)
     end
 

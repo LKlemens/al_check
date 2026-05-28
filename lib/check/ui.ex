@@ -15,10 +15,10 @@ defmodule CheckEscript.UI do
   end
 
   def format_task_status(:running, {total, _}) when total > 0,
-    do: {"•", :yellow, "[RUNNING - #{total} tests]"}
+    do: {"•", :white, "[RUNNING - #{total} tests]"}
 
   def format_task_status(:running, _),
-    do: {"•", :yellow, "[RUNNING]"}
+    do: {"•", :white, "[RUNNING]"}
 
   def format_task_status(0, {total, _}) when total > 0,
     do: {"✓", :green, "[OK - #{total} tests]"}

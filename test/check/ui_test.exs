@@ -7,15 +7,15 @@ defmodule CheckEscript.UITest do
 
   describe "format_task_status/2" do
     test "running with test counts" do
-      assert UI.format_task_status(:running, {50, 0}) == {"•", :yellow, "[RUNNING - 50 tests]"}
+      assert UI.format_task_status(:running, {50, 0}) == {"•", :white, "[RUNNING - 50 tests]"}
     end
 
     test "running without test counts" do
-      assert UI.format_task_status(:running, nil) == {"•", :yellow, "[RUNNING]"}
+      assert UI.format_task_status(:running, nil) == {"•", :white, "[RUNNING]"}
     end
 
     test "running with zero tests" do
-      assert UI.format_task_status(:running, {0, 0}) == {"•", :yellow, "[RUNNING]"}
+      assert UI.format_task_status(:running, {0, 0}) == {"•", :white, "[RUNNING]"}
     end
 
     test "success with test counts" do
