@@ -63,10 +63,13 @@ defmodule Mix.Tasks.Check.Install do
             \e[35m        @           \e[0m
             """)
 
+            install_path = Path.join([Path.expand("~"), ".mix", "escripts", "check"])
+
             Mix.shell().info([
               IO.ANSI.format([:green, :bright, "  ✓ AlCheck installed successfully!\n"])
             ])
 
+            Mix.shell().info("  Installed to: #{install_path}")
             Mix.shell().info("  Run 'check' from anywhere.\n")
             Mix.shell().info("  Examples:")
             Mix.shell().info("    check              # Run all checks")

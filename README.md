@@ -57,7 +57,7 @@ check --fix                          # Apply auto-fixes
 check --watch                        # Monitor test partition files in real-time
 check --coverage                     # Show coverage report (cached if unchanged)
 check --verbose                      # Print test output directly
-check --test-args --exclude slow     # Pass custom args to mix test
+check --test-args '--exclude slow'   # Pass custom args to mix test (quoted string)
 check --repeat 10                    # Run tests with --repeat-until-failure
 ```
 

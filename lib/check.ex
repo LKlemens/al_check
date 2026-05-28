@@ -19,7 +19,7 @@ defmodule CheckEscript do
       check --fix                          # Apply fixes from stored credo output
       check --failed                       # Re-run only failed tests from previous run
       check --watch                        # Monitor test partition files in real-time
-      check --test-args "--exclude slow"   # Replace default --warnings-as-errors with custom args
+      check --test-args '--exclude slow'   # Replace default --warnings-as-errors with custom args
       check --verbose                     # Print test output directly instead of partition status
       check --coverage                    # Show coverage report (cached if unchanged)
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
@@ -166,13 +166,9 @@ defmodule CheckEscript do
     Summary.print(results, total_seconds, tasks, coverage)
   end
 
-  @check_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help -h --init --version -v --coverage)
-
   defp parse_args(args) do
-    {check_args, test_args} = split_test_args(args)
-
     {opts, remaining_args, invalid} =
-      OptionParser.parse(check_args,
+      OptionParser.parse(args,
         strict: [
           only: :string,
           fix: :boolean,
@@ -186,26 +182,15 @@ defmodule CheckEscript do
           help: :boolean,
           init: :boolean,
           version: :boolean,
-          coverage: :boolean
+          coverage: :boolean,
+          test_args: :string
         ],
         aliases: [h: :help, v: :version]
       )
 
-    opts = if test_args, do: Keyword.put(opts, :test_args, test_args), else: opts
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
     {opts, mock_mode, fix_mode, invalid}
-  end
-
-  defp split_test_args(args) do
-    case Enum.split_while(args, &(&1 != "--test-args")) do
-      {before, ["--test-args" | rest]} ->
-        {test_args, trailing} = Enum.split_while(rest, &(&1 not in @check_flags))
-        {before ++ trailing, Enum.join(test_args, " ")}
-
-      {all, []} ->
-        {all, nil}
-    end
   end
 
   defp resolve_repeat(repeat, _invalid, _config) when is_integer(repeat), do: repeat

@@ -48,10 +48,10 @@ defmodule AlCheckTest do
     assert output =~ "All checks passed"
   end
 
-  test "--test-args stops at next check flag" do
+  test "--test-args accepts quoted string" do
     output =
       capture_io(fn ->
-        CheckEscript.main(["--test-args", "--cover", "--only", "format", "mock"])
+        CheckEscript.main(["--test-args", "--exclude slow --cover", "--only", "format", "mock"])
       end)
 
     assert output =~ "All checks passed"
