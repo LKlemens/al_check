@@ -1,0 +1,261 @@
+name: CI
+run-name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  MIX_ENV: test
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        version-file: .tool-versions
+        version-type: strict
+
+    - name: Restore dependencies cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock', '*/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    - name: Compile
+      run: mix compile --warnings-as-errors
+
+  all_tests:
+    timeout-minutes: 10
+    name: All tests
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        ref: coverage_do_not_delete
+
+    - name: Fetch best coverage value
+      run: |
+        git status
+        echo ${GITHUB_REF#refs/heads/}
+        cat best_coverage.json
+        BEST_COVERAGE=$(cat best_coverage.json | jq '.message' | sed -e 's/\"//g'  -e 's/%//g')
+        BEST_COVERAGE=${BEST_COVERAGE:-0}
+        echo "BEST_COVERAGE=${BEST_COVERAGE}" | tee -a $GITHUB_ENV
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: check github status
+      run: |
+        git status
+        echo ${GITHUB_REF#refs/heads/}
+        echo "BEST_COVERAGE=${{ env.BEST_COVERAGE }}"
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        version-file: .tool-versions
+        version-type: strict
+
+    - name: Restore dependencies cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock', '*/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    - name: Run tests
+      run: |
+        #  fail if any command in a pipeline fails
+        set -o pipefail
+        mix test --cover --warnings-as-errors | tee raport
+
+    - name: Prepare comment with coverage percentages
+      run: |
+        COVERAGE=$(awk '/[0-9.]+%[[:space:]]*\|[[:space:]]*Total/ {gsub("%",""); print $1; exit}' raport)
+        echo "COVERAGE=$COVERAGE" | tee -a $GITHUB_ENV
+        echo "COLOR=$(./.github/workflows/scripts/color.sh $COVERAGE)" | tee -a $GITHUB_ENV
+        echo "BRANCH=${GITHUB_REF#refs/heads/}" | tee -a $GITHUB_ENV
+        echo "BEST_COVERAGE=${{ env.BEST_COVERAGE }}"
+        echo "${{ env.BEST_COVERAGE }} - ${COVERAGE}"
+
+        diff=$(bc <<< "${{ env.BEST_COVERAGE }} - ${COVERAGE}")
+        abs_value=${diff#-}
+        if (( $(bc <<< "${COVERAGE} == ${{ env.BEST_COVERAGE }}") )); then
+          TITLE=OK
+          MSG="no changes - no better, no worse"
+        elif (( $(bc <<< "${COVERAGE} > ${{ env.BEST_COVERAGE }}") )); then
+          TITLE=SUCCESS
+          MSG="better for ${abs_value}%"
+          LAST_LINE="Congratulations! Good job!"
+        else
+         TITLE=ERROR
+         MSG="worse for ${abs_value}%"
+         LAST_LINE="Please add more tests to cover missing lines"
+        fi
+
+        echo "TITLE=$TITLE" | tee -a $GITHUB_ENV
+        echo "MSG=$MSG" | tee -a $GITHUB_ENV
+        echo "LAST_LINE=$LAST_LINE" | tee -a $GITHUB_ENV
+
+    - name: Find Comment
+      if: ${{ github.event_name == 'pull_request' }}
+      uses: peter-evans/find-comment@v2
+      id: fc
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: Test Coverage Summary Statistics
+
+    - name: Create or update comment
+      if: ${{ github.event_name == 'pull_request' }}
+      uses: peter-evans/create-or-update-comment@v2
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body: |
+          ## Test Coverage Summary Statistics - ${{ env.TITLE }}
+          __Coverage:__ ${{ env.COVERAGE }}: ${{ env.MSG }}
+           ${{ env.LAST_LINE }}
+        edit-mode: replace
+
+    - uses: actions/checkout@v4
+      with:
+        ref: coverage_do_not_delete
+        token: ${{ secrets.GH_TOKEN }}
+        clean: false
+
+    - name: Create the Badge
+      uses: emibcn/badge-action@v2.0.2
+      with:
+        label: 'Test coverage'
+        status: '${{ env.COVERAGE }}'
+        path: 'current_coverage.svg'
+
+    - name: Save coverage artifacts
+      if: ${{ env.BRANCH == 'main' }}
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        if (( $(bc <<< "${COVERAGE} > ${{ env.BEST_COVERAGE }}") )); then
+          echo '{"schemaVersion":1,"label":"Test Coverage","message":"${{ env.COVERAGE }}%","color":"${{ env.COLOR }}","namedLogo":"jest"}' > best_coverage.json
+          git add best_coverage.json || true
+        fi
+        git add current_coverage.svg || true
+        git commit -m "update coverage ${{ env.COVERAGE }}%" || true
+        git push
+
+  static_code_analysis:
+    name: Static Code Analysis
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        version-file: .tool-versions
+        version-type: strict
+
+    - name: Restore dependencies cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    - name: Check Formatting
+      run: mix format --check-formatted
+
+    - name: Credo
+      run: mix credo --strict
+
+    - name: Sobelow
+      run: mix sobelow --config
+
+  dialyzer:
+    name: Dialyzer
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        version-file: .tool-versions
+        version-type: strict
+
+    - name: Restore dependencies cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    - name: Restore PLT cache
+      id: plt-cache
+      uses: actions/cache@v3
+      with:
+        path: priv/plts
+        key: ${{ runner.os }}-plt-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-plt-
+
+    - name: Create PLTs
+      if: steps.plt-cache.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p priv/plts
+        mix dialyzer --plt
+
+    - name: Run Dialyzer
+      run: mix dialyzer
