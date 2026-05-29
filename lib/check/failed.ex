@@ -85,7 +85,10 @@ defmodule CheckEscript.Failed do
     status = CheckEscript.Runner.stream_port_output(port)
 
     if status == 0 do
-      IO.puts([IO.ANSI.format([:green, "\n✓ All previously failed tests now pass!"]), IO.ANSI.reset()])
+      IO.puts([
+        IO.ANSI.format([:green, "\n✓ All previously failed tests now pass!"]),
+        IO.ANSI.reset()
+      ])
     else
       IO.puts([IO.ANSI.format([:red, "\n✗ Some tests still failing"]), IO.ANSI.reset()])
       System.halt(1)

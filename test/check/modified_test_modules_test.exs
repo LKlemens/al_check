@@ -32,8 +32,11 @@ defmodule CheckEscript.ModifiedTestModulesTest do
 
       expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
         assert file in args
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
-          :binary, :exit_status, args: ["1 test, 0 failures"]
+          :binary,
+          :exit_status,
+          args: ["1 test, 0 failures"]
         ])
       end)
 
@@ -49,7 +52,10 @@ defmodule CheckEscript.ModifiedTestModulesTest do
 
     test "passes repeat and test_args" do
       expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {"test/foo_test.exs\n", 0} end)
+
+      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts ->
+        {"test/foo_test.exs\n", 0}
+      end)
 
       # File must exist for filter
       File.mkdir_p!("test")
@@ -59,8 +65,11 @@ defmodule CheckEscript.ModifiedTestModulesTest do
         assert "--warnings-as-errors" in args
         assert "--repeat-until-failure" in args
         assert "5" in args
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
-          :binary, :exit_status, args: ["ok"]
+          :binary,
+          :exit_status,
+          args: ["ok"]
         ])
       end)
 
@@ -71,7 +80,10 @@ defmodule CheckEscript.ModifiedTestModulesTest do
 
     test "handles git failure gracefully" do
       expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {"fatal: error", 128} end)
+
+      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts ->
+        {"fatal: error", 128}
+      end)
 
       output =
         capture_io(fn ->

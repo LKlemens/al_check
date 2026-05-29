@@ -164,7 +164,11 @@ defmodule CheckEscript.CoverageTest do
         {"|     85.00% | Total        |", 0}
       end)
 
-      io = capture_io(fn -> send(self(), Coverage.merge(%{mod: :coveralls, limit: 80, baseline_cmd: nil})) end)
+      io =
+        capture_io(fn ->
+          send(self(), Coverage.merge(%{mod: :coveralls, limit: 80, baseline_cmd: nil}))
+        end)
+
       assert_received :ok
       assert io =~ "85.0%"
     end
@@ -174,7 +178,11 @@ defmodule CheckEscript.CoverageTest do
         {"|     30.00% | Total        |", 0}
       end)
 
-      io = capture_io(fn -> send(self(), Coverage.merge(%{mod: :coveralls, limit: 50, baseline_cmd: nil})) end)
+      io =
+        capture_io(fn ->
+          send(self(), Coverage.merge(%{mod: :coveralls, limit: 50, baseline_cmd: nil}))
+        end)
+
       assert_received :failed
       assert io =~ "30.0%"
     end
@@ -193,7 +201,10 @@ defmodule CheckEscript.CoverageTest do
 
       io =
         capture_io(fn ->
-          send(self(), Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil}))
+          send(
+            self(),
+            Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil})
+          )
         end)
 
       assert_received :ok
@@ -242,7 +253,10 @@ defmodule CheckEscript.CoverageTest do
       # Second call — cache hit, no port call expected (no expect = fails if called)
       io =
         capture_io(fn ->
-          send(self(), Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil}))
+          send(
+            self(),
+            Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil})
+          )
         end)
 
       assert_received :ok
@@ -277,7 +291,10 @@ defmodule CheckEscript.CoverageTest do
 
       io =
         capture_io(fn ->
-          send(self(), Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil}))
+          send(
+            self(),
+            Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil})
+          )
         end)
 
       assert_received :ok

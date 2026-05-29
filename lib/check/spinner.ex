@@ -18,8 +18,13 @@ defmodule CheckEscript.Spinner do
       :stop -> :ok
     after
       100 ->
-        icon = Enum.at(@frames, rem(frame, length(@frames)))
-        IO.write("\e[2K\r#{icon} #{label}")
+        try do
+          icon = Enum.at(@frames, rem(frame, length(@frames)))
+          IO.write("\e[2K\r#{icon} #{label}")
+        rescue
+          _ -> :ok
+        end
+
         loop(label, frame + 1)
     end
   end

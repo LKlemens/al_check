@@ -237,8 +237,11 @@ defmodule CheckEscript.ModifiedTestsTest do
       # mock Port.open for mix test
       expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
         assert file in args
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
-          :binary, :exit_status, args: ["1 test, 0 failures"]
+          :binary,
+          :exit_status,
+          args: ["1 test, 0 failures"]
         ])
       end)
 
@@ -274,8 +277,11 @@ defmodule CheckEscript.ModifiedTestsTest do
 
       expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
         assert Enum.any?(args, &String.contains?(&1, ":6"))
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
-          :binary, :exit_status, args: ["1 test, 0 failures"]
+          :binary,
+          :exit_status,
+          args: ["1 test, 0 failures"]
         ])
       end)
 

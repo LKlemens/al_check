@@ -80,11 +80,20 @@ defmodule CheckEscript.Summary do
 
   def colorize_line(line) do
     cond do
-      String.contains?(line, "** ") -> [IO.ANSI.format([:red, line])]
-      String.contains?(line, "warning:") -> [IO.ANSI.format([:yellow, line])]
-      String.contains?(line, "error:") -> [IO.ANSI.format([:red, line])]
-      String.contains?(line, "┃") or String.contains?(line, "│") -> [IO.ANSI.format([:cyan, line])]
-      true -> line
+      String.contains?(line, "** ") ->
+        [IO.ANSI.format([:red, line])]
+
+      String.contains?(line, "warning:") ->
+        [IO.ANSI.format([:yellow, line])]
+
+      String.contains?(line, "error:") ->
+        [IO.ANSI.format([:red, line])]
+
+      String.contains?(line, "┃") or String.contains?(line, "│") ->
+        [IO.ANSI.format([:cyan, line])]
+
+      true ->
+        line
     end
   end
 

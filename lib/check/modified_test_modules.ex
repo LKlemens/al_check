@@ -15,7 +15,13 @@ defmodule CheckEscript.ModifiedTestModules do
       Enum.each(files, fn f -> IO.puts([IO.ANSI.format([:cyan, "  #{f}"])]) end)
 
       extra_str = Enum.join(extra_args(test_opts), " ")
-      IO.puts([IO.ANSI.format([:cyan, "\nTest command: mix test [#{length(files)} modules] #{extra_str}\n"])])
+
+      IO.puts([
+        IO.ANSI.format([
+          :cyan,
+          "\nTest command: mix test [#{length(files)} modules] #{extra_str}\n"
+        ])
+      ])
 
       port = CheckEscript.Port.open("mix", args)
       status = CheckEscript.Runner.stream_port_output(port)
@@ -37,7 +43,16 @@ defmodule CheckEscript.ModifiedTestModules do
   end
 
   defp get_modified_test_files(base_branch) do
-    case System.cmd("git", ["diff", "--name-only", "--diff-filter=d", "#{base_branch}...", "--", "test/**/*_test.exs"],
+    case System.cmd(
+           "git",
+           [
+             "diff",
+             "--name-only",
+             "--diff-filter=d",
+             "#{base_branch}...",
+             "--",
+             "test/**/*_test.exs"
+           ],
            stderr_to_stdout: true
          ) do
       {output, 0} ->
