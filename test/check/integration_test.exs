@@ -330,10 +330,10 @@ defmodule CheckEscript.IntegrationTest do
   end
 
   describe "fix module" do
-    test "extract_files_from_credo_output" do
+    test "extract_file_paths" do
       output = "  ┃   lib/my_app/accounts.ex:45:5\n  ┃   lib/my_app/users.ex:12:3\n"
 
-      files = CheckEscript.Fix.extract_files_from_credo_output(output)
+      files = CheckEscript.Fix.extract_file_paths(output)
       assert "lib/my_app/accounts.ex" in files
       assert "lib/my_app/users.ex" in files
     end

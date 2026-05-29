@@ -132,7 +132,7 @@ Create a `.check.json` in your project root (`check --init` generates one with d
   },
   "fix": [
     {"run": "mix format"},
-    {"run": "mix recode", "on_credo_files": true}
+    {"run": "mix recode", "files": ".check/credo*.txt"}
   ],
   "checks": {
     "format": {"name": "Formatting", "run": "mix format --check-formatted"},
@@ -199,11 +199,11 @@ Use `{base_branch}` placeholder in shell commands — replaced at runtime:
 ```json
 "fix": [
   {"run": "mix format"},
-  {"run": "mix recode", "on_credo_files": true}
+  {"run": "mix recode", "files": ".check/credo*.txt"}
 ]
 ```
 
-`on_credo_files: true` runs the command only on files that had credo issues in the previous run.
+`files` is a glob pointing to output files from previous checks. File paths are extracted from their contents and passed as arguments to the command. Supports globs like `.check/credo*.txt` to match multiple files.
 
 ## Output Files
 

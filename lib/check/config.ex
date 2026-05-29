@@ -37,7 +37,7 @@ defmodule CheckEscript.Config do
                       "default_repeat" => 100,
                       "fix" => [
                         %{"run" => "mix format"},
-                        %{"run" => "mix recode", "on_credo_files" => true}
+                        %{"run" => "mix recode", "files" => ".check/credo*.txt"}
                       ],
                       "coverage" => %{"mod" => "native", "limit" => 80, "html" => false},
                       "checks" => @default_checks

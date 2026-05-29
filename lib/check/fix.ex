@@ -3,7 +3,7 @@ defmodule CheckEscript.Fix do
 
   @default_fix [
     %{"run" => "mix format"},
-    %{"run" => "mix recode", "on_credo_files" => true}
+    %{"run" => "mix recode", "files" => ".check/credo*.txt"}
   ]
 
   def run do
@@ -15,11 +15,11 @@ defmodule CheckEscript.Fix do
     IO.puts([IO.ANSI.format([:green, "✓ All fixes applied successfully"])])
   end
 
-  defp run_command(%{"run" => cmd, "on_credo_files" => true}) do
-    files = load_credo_files()
+  defp run_command(%{"run" => cmd, "files" => source}) do
+    files = load_files(source)
 
     if Enum.empty?(files) do
-      IO.puts([IO.ANSI.format([:yellow, "No credo files to fix, skipping: #{cmd}\n"])])
+      IO.puts([IO.ANSI.format([:yellow, "No files found from #{source}, skipping: #{cmd}\n"])])
     else
       IO.puts([IO.ANSI.format([:cyan, "Running: #{cmd} (#{length(files)} file(s))"])])
       Enum.each(files, fn f -> IO.puts("  - #{f}") end)
@@ -47,17 +47,14 @@ defmodule CheckEscript.Fix do
     end
   end
 
-  defp load_credo_files do
-    [".check/credo.txt", ".check/credo_strict.txt"]
-    |> Enum.filter(&File.exists?/1)
-    |> Enum.flat_map(fn file ->
-      file |> File.read!() |> extract_files_from_credo_output()
-    end)
+  defp load_files(source) do
+    Path.wildcard(source)
+    |> Enum.flat_map(fn path -> path |> File.read!() |> extract_file_paths() end)
     |> Enum.uniq()
     |> Enum.sort()
   end
 
-  def extract_files_from_credo_output(output) do
+  def extract_file_paths(output) do
     ~r/^\s*┃?\s+([^\s:]+\.exs?):\d+/m
     |> Regex.scan(output)
     |> Enum.map(fn [_, file] -> file end)

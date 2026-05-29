@@ -12,22 +12,22 @@ defmodule CheckEscript.FixTest do
     stub(System, :halt, fn code -> throw({:halted, code}) end)
   end
 
-  describe "extract_files_from_credo_output/1" do
+  describe "extract_file_paths/1" do
     test "extracts file paths from credo output" do
       output = "  ┃   lib/foo/bar.ex:123:5\n  ┃   lib/baz.ex:45\n"
 
-      files = Fix.extract_files_from_credo_output(output)
+      files = Fix.extract_file_paths(output)
       assert "lib/foo/bar.ex" in files
       assert "lib/baz.ex" in files
     end
 
     test "handles .exs files" do
       output = "  ┃   test/some_test.exs:10:3\n"
-      assert Fix.extract_files_from_credo_output(output) == ["test/some_test.exs"]
+      assert Fix.extract_file_paths(output) == ["test/some_test.exs"]
     end
 
     test "returns empty for no matches" do
-      assert Fix.extract_files_from_credo_output("no files here") == []
+      assert Fix.extract_file_paths("no files here") == []
     end
   end
 
@@ -41,7 +41,7 @@ defmodule CheckEscript.FixTest do
       output = capture_io(fn -> Fix.run() end)
 
       assert output =~ "Running: mix format"
-      assert output =~ "No credo files to fix"
+      assert output =~ "No files found"
       assert output =~ "All fixes applied successfully"
     end
 
@@ -59,8 +59,8 @@ defmodule CheckEscript.FixTest do
     end
   end
 
-  describe "run/0 - on_credo_files" do
-    test "runs recode on credo-failing files" do
+  describe "run/0 - files from txt" do
+    test "runs recode on files from credo txt" do
       File.mkdir_p!(".check")
       File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n  ┃   lib/bar.ex:20:3\n")
       File.rm(".check/credo_strict.txt")
@@ -79,7 +79,7 @@ defmodule CheckEscript.FixTest do
       assert output =~ "All fixes applied successfully"
     end
 
-    test "skips recode when no credo files" do
+    test "skips when txt file does not exist" do
       File.rm(".check/credo.txt")
       File.rm(".check/credo_strict.txt")
 
@@ -87,7 +87,7 @@ defmodule CheckEscript.FixTest do
 
       output = capture_io(fn -> Fix.run() end)
 
-      assert output =~ "No credo files to fix"
+      assert output =~ "No files found"
       assert output =~ "All fixes applied successfully"
     end
 
@@ -105,12 +105,14 @@ defmodule CheckEscript.FixTest do
       output = capture_io(fn -> Fix.run() end)
 
       assert output =~ "2 file(s)"
+      assert output =~ "lib/foo.ex"
+      assert output =~ "lib/bar.ex"
     end
 
-    test "deduplicates files across credo outputs" do
+    test "deduplicates files" do
       File.mkdir_p!(".check")
-      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n")
-      File.write!(".check/credo_strict.txt", "  ┃   lib/foo.ex:20:3\n")
+      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n  ┃   lib/foo.ex:20:3\n")
+      File.rm(".check/credo_strict.txt")
 
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 
@@ -121,6 +123,36 @@ defmodule CheckEscript.FixTest do
       output = capture_io(fn -> Fix.run() end)
 
       assert output =~ "1 file(s)"
+    end
+  end
+
+  describe "run/0 - files from glob" do
+    @tag :tmp_dir
+    test "reads from multiple matched files", %{tmp_dir: tmp_dir} do
+      File.write!(Path.join(tmp_dir, "credo.txt"), "  ┃   lib/foo.ex:10:5\n")
+      File.write!(Path.join(tmp_dir, "credo_strict.txt"), "  ┃   lib/bar.ex:20:3\n")
+
+      config = %{"fix" => [%{"run" => "echo fix", "files" => "#{tmp_dir}/credo*.txt"}]}
+      expect(CheckEscript.Config, :load, fn -> {:ok, config} end)
+
+      expect(System, :cmd, fn "echo", ["fix", "lib/bar.ex", "lib/foo.ex"], _opts ->
+        {"ok", 0}
+      end)
+
+      output = capture_io(fn -> Fix.run() end)
+
+      assert output =~ "2 file(s)"
+      assert output =~ "All fixes applied successfully"
+    end
+
+    @tag :tmp_dir
+    test "skips when glob matches nothing", %{tmp_dir: tmp_dir} do
+      config = %{"fix" => [%{"run" => "echo fix", "files" => "#{tmp_dir}/*.nothing"}]}
+      expect(CheckEscript.Config, :load, fn -> {:ok, config} end)
+
+      output = capture_io(fn -> Fix.run() end)
+
+      assert output =~ "No files found"
     end
   end
 
