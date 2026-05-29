@@ -1,0 +1,17 @@
+# Ignores are for false positives expected in a CLI tool:
+# - Traversal.FileModule: reads files from user-provided paths (config, test outputs)
+# - CI.System: runs shell commands by design (mix, git, sh)
+# - DOS.StringToAtom: converts check names from config
+[
+  verbose: false,
+  private: false,
+  skip: false,
+  router: "",
+  exit: "low",
+  format: "txt",
+  ignore: [
+    "Traversal.FileModule",
+    "CI.System",
+    "DOS.StringToAtom"
+  ]
+]
