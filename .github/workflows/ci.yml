@@ -164,7 +164,8 @@ jobs:
       uses: emibcn/badge-action@v2.0.2
       with:
         label: 'Test coverage'
-        status: '${{ env.COVERAGE }}'
+        status: '${{ env.COVERAGE }}%'
+        color: '${{ env.COLOR }}'
         path: 'current_coverage.svg'
 
     - name: Save coverage artifacts
