@@ -148,7 +148,15 @@ defmodule CheckEscript.TasksTest do
 
       ExUnit.CaptureIO.capture_io(fn ->
         tasks =
-          Tasks.define(false, 2, nil, "--cover --export-coverage partition-{partition}", nil, %{}, coverage)
+          Tasks.define(
+            false,
+            2,
+            nil,
+            "--cover --export-coverage partition-{partition}",
+            nil,
+            %{},
+            coverage
+          )
 
         {_name, "sh", ["-c", cmd], 1, 2} = tasks[:test_1]
         send(self(), {:cmd1, cmd})

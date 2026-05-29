@@ -46,6 +46,7 @@ defmodule Mix.Tasks.Check.Install do
         case install_escript(check_path) do
           :ok ->
             CheckEscript.Spinner.stop(spinner2)
+
             Mix.shell().info("""
 
             \e[35m        @@          \e[0m

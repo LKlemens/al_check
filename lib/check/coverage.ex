@@ -100,7 +100,10 @@ defmodule CheckEscript.Coverage do
   end
 
   defp report_coverage(percentage, dir, limit) when is_number(limit) and percentage < limit do
-    IO.puts([IO.ANSI.format([:red, "✗ Coverage: #{percentage}% (limit: #{limit}%) | Report: #{dir}"])])
+    IO.puts([
+      IO.ANSI.format([:red, "✗ Coverage: #{percentage}% (limit: #{limit}%) | Report: #{dir}"])
+    ])
+
     :failed
   end
 
@@ -120,11 +123,18 @@ defmodule CheckEscript.Coverage do
             print_delta(percentage, baseline)
 
           :error ->
-            IO.puts([IO.ANSI.format([:yellow, "Warning: Could not parse baseline coverage from: #{String.trim(output)}"])])
+            IO.puts([
+              IO.ANSI.format([
+                :yellow,
+                "Warning: Could not parse baseline coverage from: #{String.trim(output)}"
+              ])
+            ])
         end
 
       {error, _} ->
-        IO.puts([IO.ANSI.format([:yellow, "Warning: Baseline command failed: #{String.trim(error)}"])])
+        IO.puts([
+          IO.ANSI.format([:yellow, "Warning: Baseline command failed: #{String.trim(error)}"])
+        ])
     end
   end
 

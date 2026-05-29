@@ -1,9 +1,12 @@
 defmodule CheckEscript.RunnerTest do
   use ExUnit.Case, async: true
+  use Mimic
 
   import ExUnit.CaptureIO
 
   alias CheckEscript.Runner
+
+  setup :verify_on_exit!
 
   describe "run_check/3" do
     test "quiet mode returns output and status" do
@@ -65,6 +68,9 @@ defmodule CheckEscript.RunnerTest do
 
   describe "builtin modules" do
     test "modified_tests returns status tuple" do
+      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
+      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {"", 0} end)
+
       io =
         capture_io(fn ->
           {status, output} = CheckEscript.ModifiedTests.run()
@@ -72,10 +78,13 @@ defmodule CheckEscript.RunnerTest do
         end)
 
       assert_received {:result, 0, ""}
-      assert io =~ "git diff failed" or io =~ "No modified test files"
+      assert io =~ "No modified test files"
     end
 
     test "modified_test_modules returns status tuple" do
+      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
+      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {"", 0} end)
+
       io =
         capture_io(fn ->
           {status, output} = CheckEscript.ModifiedTestModules.run()
@@ -83,7 +92,7 @@ defmodule CheckEscript.RunnerTest do
         end)
 
       assert_received {:result, 0, ""}
-      assert io =~ "git diff failed" or io =~ "No modified test files"
+      assert io =~ "No modified test files"
     end
   end
 

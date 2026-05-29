@@ -100,8 +100,7 @@ defmodule CheckEscript.IntegrationTest do
 
     test "runs partition tasks (5-tuple)" do
       tasks = [
-        {"Tests (1/1)", "sh",
-         ["-c", "echo '.\n\nFinished in 0.1s\n1 test, 0 failures'"], 1, 1}
+        {"Tests (1/1)", "sh", ["-c", "echo '.\n\nFinished in 0.1s\n1 test, 0 failures'"], 1, 1}
       ]
 
       output =

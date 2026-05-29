@@ -105,8 +105,12 @@ defmodule CheckEscript do
 
     config =
       case Config.load() do
-        {:ok, config} -> config
-        {:error, msg} -> IO.puts(:stderr, msg) && System.halt(1)
+        {:ok, config} ->
+          config
+
+        {:error, msg} ->
+          IO.puts(:stderr, msg)
+          System.halt(1)
       end
 
     repeat = resolve_repeat(opts[:repeat], invalid, config)
@@ -162,7 +166,10 @@ defmodule CheckEscript do
     verbose = opts[:verbose] || false
     test_cmd = Tasks.build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
     test_opts = %{repeat: repeat, test_args: test_args}
-    {results, total_seconds} = Runner.run_checks(tasks, test_opts, test_cmd, max_concurrency, verbose)
+
+    {results, total_seconds} =
+      Runner.run_checks(tasks, test_opts, test_cmd, max_concurrency, verbose)
+
     Summary.print(results, total_seconds, tasks, coverage)
   end
 

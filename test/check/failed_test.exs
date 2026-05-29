@@ -179,6 +179,7 @@ defmodule CheckEscript.FailedTest do
       expect(CheckEscript.Port, :open, fn "mix", args ->
         assert "test" in args
         assert "test/foo_test.exs:10" in args
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
           :binary,
           :exit_status,
@@ -226,6 +227,7 @@ defmodule CheckEscript.FailedTest do
       expect(CheckEscript.Port, :open, fn "mix", args ->
         assert "--repeat-until-failure" in args
         assert "5" in args
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
           :binary,
           :exit_status,
@@ -247,6 +249,7 @@ defmodule CheckEscript.FailedTest do
         assert "--cover" in args
         assert "--export-coverage" in args
         assert "failed" in args
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
           :binary,
           :exit_status,

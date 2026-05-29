@@ -56,8 +56,10 @@ defmodule CheckEscript.Tasks do
       task_def =
         if mock_mode do
           {task_name, "sh",
-           ["-c", "sleep 2 && echo '............\n\nFinished in 0.1s\n20 tests, 0 failures' && exit 0"],
-           partition, partitions}
+           [
+             "-c",
+             "sleep 2 && echo '............\n\nFinished in 0.1s\n20 tests, 0 failures' && exit 0"
+           ], partition, partitions}
         else
           {test_runner, coverage_flags} = test_runner_cmd(coverage.mod)
           resolved_flags = String.replace(test_flags, "{partition}", to_string(partition))

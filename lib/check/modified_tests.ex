@@ -28,7 +28,16 @@ defmodule CheckEscript.ModifiedTests do
   end
 
   defp get_modified_test_files(base_branch) do
-    case System.cmd("git", ["diff", "--name-only", "--diff-filter=d", "#{base_branch}...", "--", "test/**/*_test.exs"],
+    case System.cmd(
+           "git",
+           [
+             "diff",
+             "--name-only",
+             "--diff-filter=d",
+             "#{base_branch}...",
+             "--",
+             "test/**/*_test.exs"
+           ],
            stderr_to_stdout: true
          ) do
       {output, 0} ->
@@ -47,7 +56,10 @@ defmodule CheckEscript.ModifiedTests do
       []
     else
       if setup_or_describe_changed?(file, changed_lines) do
-        IO.puts([IO.ANSI.format([:yellow, "  #{file} (setup/describe changed, running whole file)"])])
+        IO.puts([
+          IO.ANSI.format([:yellow, "  #{file} (setup/describe changed, running whole file)"])
+        ])
+
         [file]
       else
         find_test_lines(file, changed_lines)
@@ -56,18 +68,23 @@ defmodule CheckEscript.ModifiedTests do
   end
 
   defp get_changed_lines(file, base_branch) do
-    {output, _status} = System.cmd("git", ["diff", "-U0", "#{base_branch}...", "--", file], stderr_to_stdout: true)
+    {output, _status} =
+      System.cmd("git", ["diff", "-U0", "#{base_branch}...", "--", file], stderr_to_stdout: true)
 
     # Parse @@ hunk headers: @@ -old,count +new,count @@
     ~r/@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
     |> Regex.scan(output)
     |> Enum.flat_map(fn
-      [_, start, ""] -> [String.to_integer(start)]
+      [_, start, ""] ->
+        [String.to_integer(start)]
+
       [_, start, count] ->
         s = String.to_integer(start)
         c = String.to_integer(count)
         if c == 0, do: [], else: Enum.to_list(s..(s + c - 1))
-      [_, start] -> [String.to_integer(start)]
+
+      [_, start] ->
+        [String.to_integer(start)]
     end)
   end
 
@@ -115,7 +132,13 @@ defmodule CheckEscript.ModifiedTests do
     args = ["test" | targets] ++ extra
 
     extra_str = Enum.join(extra, " ")
-    IO.puts([IO.ANSI.format([:cyan, "\nTest command: mix test [#{length(targets)} tests] #{extra_str}\n"])])
+
+    IO.puts([
+      IO.ANSI.format([
+        :cyan,
+        "\nTest command: mix test [#{length(targets)} tests] #{extra_str}\n"
+      ])
+    ])
 
     port = CheckEscript.Port.open("mix", args)
     status = CheckEscript.Runner.stream_port_output(port)

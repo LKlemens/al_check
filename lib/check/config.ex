@@ -111,26 +111,29 @@ defmodule CheckEscript.Config do
     config["base_branch"] || detect_base_branch()
   end
 
+  @base_branch_candidates ["main", "master", "origin/main", "origin/master"]
+
   defp detect_base_branch do
-    branch =
-      cond do
-        branch_exists?("main") -> "main"
-        branch_exists?("master") -> "master"
-        true ->
-          IO.puts(
-            :stderr,
-            "Could not detect base branch (tried main, master). Set \"base_branch\" in .check.json"
-          )
+    case Enum.find(@base_branch_candidates, &branch_exists?/1) do
+      nil ->
+        IO.puts(
+          :stderr,
+          "Could not detect base branch (tried #{Enum.join(@base_branch_candidates, ", ")}). Set \"base_branch\" in .check.json"
+        )
 
-          System.halt(1)
-      end
+        System.halt(1)
 
-    IO.puts("Detected base git branch: #{branch}")
-    branch
+      branch ->
+        IO.puts("Detected base git branch: #{branch}")
+        branch
+    end
   end
 
   defp branch_exists?(name) do
-    match?({_, 0}, System.cmd("git", ["rev-parse", "--verify", "--quiet", name], stderr_to_stdout: true))
+    match?(
+      {_, 0},
+      System.cmd("git", ["rev-parse", "--verify", "--quiet", name], stderr_to_stdout: true)
+    )
   end
 
   def humanize_key(key) do
@@ -157,8 +160,11 @@ defmodule CheckEscript.Config do
 
   defp warn_check_entries(checks) when is_map(checks) do
     Enum.each(checks, fn
-      {name, config} when is_map(config) -> warn_keys(config, @known_check_keys, "checks.#{name}.")
-      _ -> :ok
+      {name, config} when is_map(config) ->
+        warn_keys(config, @known_check_keys, "checks.#{name}.")
+
+      _ ->
+        :ok
     end)
   end
 

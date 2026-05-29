@@ -20,11 +20,21 @@ defmodule CheckEscript.ConfigTest do
     end
 
     test "returns disabled for nil" do
-      assert Config.parse_coverage(nil) == %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+      assert Config.parse_coverage(nil) == %{
+               mod: false,
+               limit: nil,
+               html: false,
+               baseline_cmd: nil
+             }
     end
 
     test "returns disabled for false" do
-      assert Config.parse_coverage(false) == %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+      assert Config.parse_coverage(false) == %{
+               mod: false,
+               limit: nil,
+               html: false,
+               baseline_cmd: nil
+             }
     end
 
     test "returns disabled for unknown mod" do
@@ -129,7 +139,7 @@ defmodule CheckEscript.ConfigTest do
         end)
 
       assert_received {:branch, branch}
-      assert branch in ["main", "master"]
+      assert branch in ["main", "master", "origin/main", "origin/master"]
       assert output =~ "Detected base git branch"
     end
   end

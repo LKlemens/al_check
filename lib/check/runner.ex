@@ -80,7 +80,9 @@ defmodule CheckEscript.Runner do
     tasks
     |> Enum.with_index()
     |> Task.async_stream(
-      fn {task, index} -> execute_task(task, index, task_count, dot_counter_pid, verbose, test_opts) end,
+      fn {task, index} ->
+        execute_task(task, index, task_count, dot_counter_pid, verbose, test_opts)
+      end,
       timeout: :infinity,
       ordered: false,
       max_concurrency: max_concurrency
@@ -91,11 +93,27 @@ defmodule CheckEscript.Runner do
     end)
   end
 
-  defp execute_task({name, cmd, args, partition, total_partitions}, index, task_count, dot_counter_pid, verbose, _test_opts) do
+  defp execute_task(
+         {name, cmd, args, partition, total_partitions},
+         index,
+         task_count,
+         dot_counter_pid,
+         verbose,
+         _test_opts
+       ) do
     Process.sleep((rem(index, total_partitions) + 1) * 200)
 
     {status, output} =
-      run_check_with_streaming(cmd, args, index, name, task_count, dot_counter_pid, partition, verbose)
+      run_check_with_streaming(
+        cmd,
+        args,
+        index,
+        name,
+        task_count,
+        dot_counter_pid,
+        partition,
+        verbose
+      )
 
     {total, failures} =
       Agent.get(dot_counter_pid, fn state ->
@@ -106,7 +124,14 @@ defmodule CheckEscript.Runner do
     {name, index, status, output, {total, failures}}
   end
 
-  defp execute_task({name, :builtin, args}, index, _task_count, _dot_counter_pid, _verbose, test_opts) do
+  defp execute_task(
+         {name, :builtin, args},
+         index,
+         _task_count,
+         _dot_counter_pid,
+         _verbose,
+         test_opts
+       ) do
     {status, output} = run_builtin(hd(args), test_opts)
     {name, index, status, output, nil}
   end
@@ -116,7 +141,16 @@ defmodule CheckEscript.Runner do
     {name, index, status, output, nil}
   end
 
-  defp run_check_with_streaming(cmd, args, index, name, total_tasks, dot_counter_pid, partition, verbose) do
+  defp run_check_with_streaming(
+         cmd,
+         args,
+         index,
+         name,
+         total_tasks,
+         dot_counter_pid,
+         partition,
+         verbose
+       ) do
     updater_pid =
       if not verbose do
         spawn_link(fn -> UI.update_loop(index, name, total_tasks, dot_counter_pid) end)
@@ -127,7 +161,8 @@ defmodule CheckEscript.Runner do
 
     port = CheckEscript.Port.open(cmd, args)
 
-    {output, status} = collect_port_output(port, "", dot_counter_pid, partition, file_handle, verbose)
+    {output, status} =
+      collect_port_output(port, "", dot_counter_pid, partition, file_handle, verbose)
 
     File.close(file_handle)
     if updater_pid, do: send(updater_pid, :stop)

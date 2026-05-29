@@ -12,6 +12,10 @@ defmodule AlCheck.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [ignore_modules: [CheckEscript.Port]],
+      dialyzer: [
+        plt_add_apps: [:mix],
+        ignore_warnings: ".dialyzer_ignore.exs"
+      ],
       escript: [
         main_module: CheckEscript,
         path: "scripts/check"
