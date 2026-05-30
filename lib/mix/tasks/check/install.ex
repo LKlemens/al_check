@@ -64,14 +64,31 @@ defmodule Mix.Tasks.Check.Install do
             \e[35m        @           \e[0m
             """)
 
-            install_path = Path.join([Path.expand("~"), ".mix", "escripts", "check"])
+            escripts_dir = Path.join([Path.expand("~"), ".mix", "escripts"])
 
             Mix.shell().info([
               IO.ANSI.format([:green, :bright, "  ✓ AlCheck installed successfully!\n"])
             ])
 
-            Mix.shell().info("  Installed to: #{install_path}")
-            Mix.shell().info("  Run 'check' from anywhere.\n")
+            case System.find_executable("check") do
+              nil ->
+                Mix.shell().info("  Installed to: #{Path.join(escripts_dir, "check")}\n")
+
+                Mix.shell().info([
+                  IO.ANSI.format([
+                    :yellow,
+                    "  To run 'check' from anywhere, add escripts to your PATH:\n"
+                  ])
+                ])
+
+                Mix.shell().info("    export PATH=\"$PATH:#{escripts_dir}\"\n")
+                Mix.shell().info("  Add this line to your ~/.bashrc, ~/.zshrc, or shell config.\n")
+                Mix.shell().info("  If you use asdf, run: asdf reshim\n")
+
+              path ->
+                Mix.shell().info("  Available at: #{path}\n")
+            end
+
             Mix.shell().info("  Examples:")
             Mix.shell().info("    check              # Run all checks")
             Mix.shell().info("    check --fast       # Run fast checks only")

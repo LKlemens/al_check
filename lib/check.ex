@@ -93,6 +93,49 @@ defmodule CheckEscript do
 
   All fields are optional. CLI flags override config values.
   When `checks` is provided, it replaces all built-in checks (test partitions are always added).
+
+  ## Adding custom checks
+
+  Add a check to the `"checks"` section in `.check.json`:
+
+      "checks": {
+        "sobelow": {"name": "Security", "run": "mix sobelow --config"},
+        "gettext": {"name": "Gettext", "run": "mix gettext.extract --check-up-to-date"}
+      }
+
+  Each check needs a `run` key with the shell command to execute. The `name` is optional
+  and defaults to a capitalized version of the key.
+
+  ### Shell commands
+
+  The `run` string is executed via `sh -c`, so pipes, env vars, and shell features work:
+
+      "compile_test": {"run": "MIX_ENV=test mix compile --warnings-as-errors"}
+
+  Use `{base_branch}` placeholder for the auto-detected base branch:
+
+      "diff_check": {"run": "git diff {base_branch}... --stat"}
+
+  ### Builtin checks
+
+  For checks that need Elixir logic (not just a shell command), use the `builtin:` prefix:
+
+      "modified_tests": {"run": "builtin:modified_tests"}
+
+  Available builtins:
+    - `builtin:modified_tests` — runs only changed test lines vs base branch
+    - `builtin:modified_test_modules` — runs whole modified test files vs base branch
+
+  ### Selecting which checks run by default
+
+  The `"run"` key lists which checks execute when running `check` without flags:
+
+      "run": ["format", "compile", "credo", "test"]
+
+  Checks not in `"run"` are still available via `--only`:
+
+      check --only sobelow
+      check --only modified_tests
   """
 
   alias CheckEscript.{Config, Coverage, Failed, Fix, Runner, Summary, Tasks, Watch}
