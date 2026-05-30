@@ -148,11 +148,17 @@ defmodule CheckEscript.ModifiedTests do
     end)
   end
 
+  # Walk backwards but stop at describe boundary to avoid crossing into another block
   def find_enclosing_test(lines, line_num) do
     line_num..1//-1
-    |> Enum.find(fn num ->
+    |> Enum.reduce_while(nil, fn num, _acc ->
       line = Enum.at(lines, num - 1, "")
-      String.match?(line, ~r/^\s*test\s+["(]/)
+
+      cond do
+        String.match?(line, ~r/^\s*test\s+["(]/) -> {:halt, num}
+        String.match?(line, ~r/^\s*describe\s+["(]/) -> {:halt, nil}
+        true -> {:cont, nil}
+      end
     end)
   end
 

@@ -60,6 +60,40 @@ defmodule CheckEscript.ModifiedTestsTest do
       assert ModifiedTests.find_enclosing_test(lines, 6) == 5
       assert ModifiedTests.find_enclosing_test(lines, 2) == 1
     end
+
+    test "stops at describe boundary" do
+      lines = [
+        "  describe \"first\" do",
+        "    test \"a\" do",
+        "      assert true",
+        "    end",
+        "  end",
+        "",
+        "  describe \"second\" do",
+        "    b = 12",
+        "    test \"b\" do",
+        "      assert true",
+        "    end",
+        "  end"
+      ]
+
+      # line 8 (b = 12) is inside "second" describe, above test "b" at line 9
+      # should NOT find test "a" at line 2 from the "first" describe
+      assert ModifiedTests.find_enclosing_test(lines, 8) == nil
+    end
+
+    test "finds test within same describe" do
+      lines = [
+        "  describe \"feature\" do",
+        "    test \"works\" do",
+        "      x = 1",
+        "      assert x == 1",
+        "    end",
+        "  end"
+      ]
+
+      assert ModifiedTests.find_enclosing_test(lines, 4) == 2
+    end
   end
 
   describe "find_enclosing_describe/2" do
