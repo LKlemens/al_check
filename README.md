@@ -104,7 +104,9 @@ check --only modified_tests --repeat 5  # Repeat modified tests
 ```
 
 `modified_tests` detects:
-- Setup/describe changed -> runs the whole file
+- Module-level setup changed -> runs the whole file
+- Setup inside describe changed -> runs that describe block
+- Describe line changed -> runs that describe block
 - Test body changed -> runs only that specific test line
 - Module-level change -> runs the whole file
 
@@ -113,6 +115,60 @@ check --only modified_tests --repeat 5  # Repeat modified tests
 ```bash
 check --coverage    # Show coverage report (cached if cover/ unchanged)
 ```
+
+## Test Partitioning
+
+Tests run in parallel partitions (default: 3). Each partition uses its own database.
+
+```bash
+check --partitions 4  # Run with 4 partitions
+```
+
+### Database setup
+
+Each partition needs its own database to avoid deadlocks and connection limit issues.
+In `config/runtime.exs`, use `MIX_TEST_PARTITION` to create per-partition database URLs:
+
+```elixir
+# config/runtime.exs
+partition = System.get_env("MIX_TEST_PARTITION", "")
+
+test_database_url =
+  System.get_env("TEST_DATABASE_URL")
+  |> URI.parse()
+  |> then(fn uri ->
+    db_name = String.trim_leading(uri.path || "", "/")
+    Map.put(uri, :path, "/#{db_name}#{partition}")
+  end)
+  |> URI.to_string()
+
+config :my_app, MyApp.Repo, url: test_database_url
+```
+
+This creates databases like `my_app_test1`, `my_app_test2`, etc.
+
+### Avoiding DB connection limits
+
+With N partitions, your database needs at least `N * pool_size` connections.
+Increase `max_connections` in PostgreSQL if you see connection errors:
+
+```bash
+# PostgreSQL config (or docker run command)
+postgres -c max_connections=400 -c shared_buffers=2GB
+```
+
+Consider reducing `pool_size` per partition in `config/test.exs`:
+
+```elixir
+config :my_app, MyApp.Repo, pool_size: 10
+```
+
+With 3 partitions and pool_size 10, you need at least 30 connections.
+
+### Scheduler tuning
+
+AlCheck automatically limits BEAM schedulers per partition to avoid CPU contention:
+`schedulers_online / partitions`. With 10 cores and 3 partitions, each gets ~3 schedulers.
 
 ## Configuration
 
