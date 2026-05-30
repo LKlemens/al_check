@@ -33,7 +33,6 @@ defmodule Mix.Tasks.Check.Install do
 
   @spec run([String.t()]) :: :ok
   def run(_args) do
-    # Get the al_check dependency path or current directory
     check_path = get_check_path()
 
     spinner = CheckEscript.Spinner.start("Building escript in #{check_path}")
@@ -46,55 +45,7 @@ defmodule Mix.Tasks.Check.Install do
         case install_escript(check_path) do
           :ok ->
             CheckEscript.Spinner.stop(spinner2)
-
-            Mix.shell().info("""
-
-            \e[35m        @@          \e[0m
-            \e[35m       @@@@         \e[0m
-            \e[35m      @@@@@@        \e[0m
-            \e[35m     @@@  @@@       \e[0m
-            \e[35m    @@@    @@@      \e[0m
-            \e[35m   @@@      @@@     \e[0m
-            \e[35m  @@@   @@   @@@    \e[0m
-            \e[35m   @@@  @@  @@@     \e[0m
-            \e[35m    @@@ @@ @@@      \e[0m
-            \e[35m     @@@@@@@        \e[0m
-            \e[35m      @@@@@         \e[0m
-            \e[35m       @@@          \e[0m
-            \e[35m        @           \e[0m
-            """)
-
-            escripts_dir = Path.join([Path.expand("~"), ".mix", "escripts"])
-
-            Mix.shell().info([
-              IO.ANSI.format([:green, :bright, "  ✓ AlCheck installed successfully!\n"])
-            ])
-
-            case System.find_executable("check") do
-              nil ->
-                Mix.shell().info("  Installed to: #{Path.join(escripts_dir, "check")}\n")
-
-                Mix.shell().info([
-                  IO.ANSI.format([
-                    :yellow,
-                    "  To run 'check' from anywhere, add escripts to your PATH:\n"
-                  ])
-                ])
-
-                Mix.shell().info("    export PATH=\"$PATH:#{escripts_dir}\"\n")
-                Mix.shell().info("  Add this line to your ~/.bashrc, ~/.zshrc, or shell config.\n")
-                Mix.shell().info("  If you use asdf, run: asdf reshim\n")
-
-              path ->
-                Mix.shell().info("  Available at: #{path}\n")
-            end
-
-            Mix.shell().info("  Examples:")
-            Mix.shell().info("    check              # Run all checks")
-            Mix.shell().info("    check --fast       # Run fast checks only")
-            Mix.shell().info("    check --only test  # Run specific checks")
-            Mix.shell().info("    check --init       # Create .check.json")
-            Mix.shell().info("    check -v           # Show version\n")
+            print_success()
 
           {:error, reason} ->
             CheckEscript.Spinner.stop(spinner2)
@@ -104,6 +55,57 @@ defmodule Mix.Tasks.Check.Install do
       {:error, reason} ->
         CheckEscript.Spinner.stop(spinner)
         Mix.raise("Failed to build escript: #{reason}")
+    end
+  end
+
+  defp print_success do
+    Mix.shell().info("""
+
+    \e[35m        @@          \e[0m
+    \e[35m       @@@@         \e[0m
+    \e[35m      @@@@@@        \e[0m
+    \e[35m     @@@  @@@       \e[0m
+    \e[35m    @@@    @@@      \e[0m
+    \e[35m   @@@      @@@     \e[0m
+    \e[35m  @@@   @@   @@@    \e[0m
+    \e[35m   @@@  @@  @@@     \e[0m
+    \e[35m    @@@ @@ @@@      \e[0m
+    \e[35m     @@@@@@@        \e[0m
+    \e[35m      @@@@@         \e[0m
+    \e[35m       @@@          \e[0m
+    \e[35m        @           \e[0m
+    """)
+
+    Mix.shell().info([IO.ANSI.format([:green, :bright, "  ✓ AlCheck installed successfully!\n"])])
+    print_install_path()
+
+    Mix.shell().info("  Examples:")
+    Mix.shell().info("    check              # Run all checks")
+    Mix.shell().info("    check --fast       # Run fast checks only")
+    Mix.shell().info("    check --only test  # Run specific checks")
+    Mix.shell().info("    check --init       # Create .check.json")
+    Mix.shell().info("    check -v           # Show version\n")
+  end
+
+  defp print_install_path do
+    case System.find_executable("check") do
+      nil ->
+        escripts_dir = Path.join([Path.expand("~"), ".mix", "escripts"])
+        Mix.shell().info("  Installed to: #{Path.join(escripts_dir, "check")}\n")
+
+        Mix.shell().info([
+          IO.ANSI.format([
+            :yellow,
+            "  To run 'check' from anywhere, add escripts to your PATH:\n"
+          ])
+        ])
+
+        Mix.shell().info("    export PATH=\"$PATH:#{escripts_dir}\"\n")
+        Mix.shell().info("  Add this line to your ~/.bashrc, ~/.zshrc, or shell config.\n")
+        Mix.shell().info("  If you use asdf, run: asdf reshim\n")
+
+      path ->
+        Mix.shell().info("  Available at: #{path}\n")
     end
   end
 
