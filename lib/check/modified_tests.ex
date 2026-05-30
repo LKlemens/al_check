@@ -55,17 +55,69 @@ defmodule CheckEscript.ModifiedTests do
     if Enum.empty?(changed_lines) do
       []
     else
-      if setup_or_describe_changed?(file, changed_lines) do
+      lines = File.read!(file) |> String.split("\n")
+      classify_and_run(file, changed_lines, lines)
+    end
+  end
+
+  defp classify_and_run(file, changed_lines, lines) do
+    has_module_setup? =
+      Enum.any?(changed_lines, fn line_num ->
+        line = Enum.at(lines, line_num - 1, "")
+        setup_line?(line) and find_enclosing_describe(lines, line_num) == nil
+      end)
+
+    if has_module_setup? do
+      IO.puts([
+        IO.ANSI.format([:yellow, "  #{file} (module-level setup changed, running whole file)"])
+      ])
+
+      [file]
+    else
+      targets =
+        changed_lines
+        |> Enum.map(fn line_num -> target_for_line(file, line_num, lines) end)
+        |> List.flatten()
+        |> Enum.uniq()
+
+      if Enum.empty?(targets) do
         IO.puts([
-          IO.ANSI.format([:yellow, "  #{file} (setup/describe changed, running whole file)"])
+          IO.ANSI.format([:yellow, "  #{file} (module-level change, running whole file)"])
         ])
 
         [file]
       else
-        find_test_lines(file, changed_lines)
+        Enum.each(targets, fn t -> IO.puts([IO.ANSI.format([:cyan, "  #{t}"])]) end)
+        targets
       end
     end
   end
+
+  defp target_for_line(file, line_num, lines) do
+    line = Enum.at(lines, line_num - 1, "")
+
+    cond do
+      setup_line?(line) -> target_from_describe(file, lines, line_num)
+      String.match?(line, ~r/^\s*describe\b/) -> ["#{file}:#{line_num}"]
+      true -> target_from_test_or_describe(file, lines, line_num)
+    end
+  end
+
+  defp target_from_describe(file, lines, line_num) do
+    case find_enclosing_describe(lines, line_num) do
+      nil -> []
+      desc_line -> ["#{file}:#{desc_line}"]
+    end
+  end
+
+  defp target_from_test_or_describe(file, lines, line_num) do
+    case find_enclosing_test(lines, line_num) do
+      nil -> target_from_describe(file, lines, line_num)
+      test_line -> ["#{file}:#{test_line}"]
+    end
+  end
+
+  defp setup_line?(line), do: String.match?(line, ~r/^\s*(setup|setup_all)\b/)
 
   defp get_changed_lines(file, base_branch) do
     {output, _status} =
@@ -88,37 +140,14 @@ defmodule CheckEscript.ModifiedTests do
     end)
   end
 
-  def setup_or_describe_changed?(file, changed_lines) do
-    lines = File.read!(file) |> String.split("\n")
-
-    Enum.any?(changed_lines, fn line_num ->
-      line = Enum.at(lines, line_num - 1, "")
-      String.match?(line, ~r/^\s*(setup|setup_all|describe)\b/)
+  def find_enclosing_describe(lines, line_num) do
+    line_num..1//-1
+    |> Enum.find(fn num ->
+      line = Enum.at(lines, num - 1, "")
+      String.match?(line, ~r/^\s*describe\s+["(]/)
     end)
   end
 
-  def find_test_lines(file, changed_lines) do
-    lines = File.read!(file) |> String.split("\n")
-
-    # For each changed line, walk up to find the nearest `test "` definition
-    test_line_numbers =
-      changed_lines
-      |> Enum.map(fn line_num -> find_enclosing_test(lines, line_num) end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-
-    if Enum.empty?(test_line_numbers) do
-      # changed lines are outside any test block (e.g. module-level code)
-      IO.puts([IO.ANSI.format([:yellow, "  #{file} (module-level change, running whole file)"])])
-      [file]
-    else
-      targets = Enum.map(test_line_numbers, fn line -> "#{file}:#{line}" end)
-      Enum.each(targets, fn t -> IO.puts([IO.ANSI.format([:cyan, "  #{t}"])]) end)
-      targets
-    end
-  end
-
-  # Walk backwards from changed_line to find the nearest `test "` or `test(`
   def find_enclosing_test(lines, line_num) do
     line_num..1//-1
     |> Enum.find(fn num ->

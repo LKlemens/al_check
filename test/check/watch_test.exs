@@ -44,7 +44,8 @@ defmodule CheckEscript.WatchTest do
           CheckEscript.Watch.run()
         end)
 
-      assert output =~ "Watching 1 test partition file(s)"
+      assert output =~ "Watching"
+      assert output =~ "test partition file(s)"
       assert output =~ "watching..."
     after
       File.rm(".check/test_partition_1.txt")

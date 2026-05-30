@@ -62,9 +62,84 @@ defmodule CheckEscript.ModifiedTestsTest do
     end
   end
 
-  describe "setup_or_describe_changed?/2" do
+  describe "find_enclosing_describe/2" do
+    test "finds describe above changed line" do
+      lines = [
+        "defmodule MyTest do",
+        "  describe \"feature\" do",
+        "    setup do",
+        "      {:ok, conn: build_conn()}",
+        "    end",
+        "    test \"works\" do",
+        "      assert true",
+        "    end",
+        "  end",
+        "end"
+      ]
+
+      assert ModifiedTests.find_enclosing_describe(lines, 6) == 2
+      assert ModifiedTests.find_enclosing_describe(lines, 3) == 2
+    end
+
+    test "returns nil when not inside describe" do
+      lines = [
+        "defmodule MyTest do",
+        "  setup do",
+        "    :ok",
+        "  end",
+        "end"
+      ]
+
+      assert ModifiedTests.find_enclosing_describe(lines, 2) == nil
+    end
+  end
+
+  describe "run/1 - setup inside describe runs describe block" do
     @tag :tmp_dir
-    test "detects setup change", %{tmp_dir: tmp_dir} do
+    test "setup inside describe runs describe block, not whole file", %{tmp_dir: tmp_dir} do
+      file = Path.join(tmp_dir, "test.exs")
+
+      File.write!(file, """
+      defmodule MyTest do
+        describe "feature" do
+          setup do
+            {:ok, conn: build_conn()}
+          end
+
+          test "works" do
+            assert true
+          end
+        end
+
+        test "other" do
+          assert true
+        end
+      end
+      """)
+
+      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
+      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
+      # hunk touching line 3 (setup inside describe)
+      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -3,1 +3,1 @@\n", 0} end)
+
+      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+        # should run describe block (line 2), not whole file
+        assert Enum.any?(args, &String.contains?(&1, ":2"))
+        refute file in args
+
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["1 test, 0 failures"]
+        ])
+      end)
+
+      capture_io(fn -> send(self(), ModifiedTests.run()) end)
+      assert_received {0, ""}
+    end
+
+    @tag :tmp_dir
+    test "module-level setup runs whole file", %{tmp_dir: tmp_dir} do
       file = Path.join(tmp_dir, "test.exs")
 
       File.write!(file, """
@@ -73,32 +148,35 @@ defmodule CheckEscript.ModifiedTestsTest do
           {:ok, conn: build_conn()}
         end
 
-        test "something" do
+        test "works" do
           assert true
         end
       end
       """)
 
-      assert ModifiedTests.setup_or_describe_changed?(file, [2])
+      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
+      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
+      # hunk touching line 2 (module-level setup)
+      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
+
+      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+        # should run whole file
+        assert file in args
+
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["1 test, 0 failures"]
+        ])
+      end)
+
+      output = capture_io(fn -> send(self(), ModifiedTests.run()) end)
+      assert_received {0, ""}
+      assert output =~ "module-level setup changed"
     end
 
     @tag :tmp_dir
-    test "detects setup_all change", %{tmp_dir: tmp_dir} do
-      file = Path.join(tmp_dir, "test.exs")
-
-      File.write!(file, """
-      defmodule MyTest do
-        setup_all do
-          {:ok, data: seed()}
-        end
-      end
-      """)
-
-      assert ModifiedTests.setup_or_describe_changed?(file, [2])
-    end
-
-    @tag :tmp_dir
-    test "detects describe change", %{tmp_dir: tmp_dir} do
+    test "describe line change runs describe block", %{tmp_dir: tmp_dir} do
       file = Path.join(tmp_dir, "test.exs")
 
       File.write!(file, """
@@ -111,89 +189,23 @@ defmodule CheckEscript.ModifiedTestsTest do
       end
       """)
 
-      assert ModifiedTests.setup_or_describe_changed?(file, [2])
-    end
+      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
+      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
+      # hunk touching line 2 (describe line)
+      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
 
-    @tag :tmp_dir
-    test "returns false for test-only change", %{tmp_dir: tmp_dir} do
-      file = Path.join(tmp_dir, "test.exs")
+      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+        assert Enum.any?(args, &String.contains?(&1, ":2"))
 
-      File.write!(file, """
-      defmodule MyTest do
-        setup do
-          {:ok, conn: build_conn()}
-        end
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["1 test, 0 failures"]
+        ])
+      end)
 
-        test "something" do
-          assert true
-        end
-      end
-      """)
-
-      refute ModifiedTests.setup_or_describe_changed?(file, [7])
-    end
-  end
-
-  describe "find_test_lines/2" do
-    @tag :tmp_dir
-    test "finds specific test lines for changed lines", %{tmp_dir: tmp_dir} do
-      file = Path.join(tmp_dir, "test.exs")
-
-      File.write!(file, """
-      defmodule MyTest do
-        test "first" do
-          assert 1 == 1
-        end
-
-        test "second" do
-          assert 2 == 2
-        end
-      end
-      """)
-
-      result = capture_io(fn -> send(self(), ModifiedTests.find_test_lines(file, [3])) end)
-      assert_received [target]
-      assert target =~ ":2"
-      assert result =~ ":2"
-    end
-
-    @tag :tmp_dir
-    test "returns whole file for module-level change", %{tmp_dir: tmp_dir} do
-      file = Path.join(tmp_dir, "test.exs")
-
-      File.write!(file, """
-      defmodule MyTest do
-        use ExUnit.Case
-        @moduletag :integration
-
-        test "something" do
-          assert true
-        end
-      end
-      """)
-
-      result = capture_io(fn -> send(self(), ModifiedTests.find_test_lines(file, [3])) end)
-      assert_received [^file]
-      assert result =~ "module-level change"
-    end
-
-    @tag :tmp_dir
-    test "deduplicates when multiple lines in same test", %{tmp_dir: tmp_dir} do
-      file = Path.join(tmp_dir, "test.exs")
-
-      File.write!(file, """
-      defmodule MyTest do
-        test "something" do
-          x = 1
-          y = 2
-          assert x + y == 3
-        end
-      end
-      """)
-
-      capture_io(fn -> send(self(), ModifiedTests.find_test_lines(file, [3, 4, 5])) end)
-      assert_received [target]
-      assert target =~ ":2"
+      capture_io(fn -> send(self(), ModifiedTests.run()) end)
+      assert_received {0, ""}
     end
   end
 
@@ -251,7 +263,7 @@ defmodule CheckEscript.ModifiedTestsTest do
         end)
 
       assert_received {0, ""}
-      assert output =~ "setup/describe changed"
+      assert output =~ "setup changed"
     end
 
     @tag :tmp_dir
