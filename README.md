@@ -5,6 +5,7 @@
 [![Hex.pm Downloads](https://img.shields.io/hexpm/dt/al_check.svg)](https://hex.pm/packages/al_check)
 [![CI](https://github.com/LKlemens/al_check/actions/workflows/ci.yml/badge.svg)](https://github.com/LKlemens/al_check/actions/workflows/ci.yml)
 [![Coverage](https://raw.githubusercontent.com/LKlemens/al_check/coverage_do_not_delete/current_coverage.svg)](https://github.com/LKlemens/al_check)
+<img src="https://raw.githubusercontent.com/LKlemens/al_check/coverage_do_not_delete/casts/02-green-full.gif" alt="check --green run" width="950" />
 
 A parallel code quality checker for Elixir projects. Runs format, compile, credo, dialyzer, and tests concurrently with smart test partitioning.
 
