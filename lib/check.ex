@@ -41,8 +41,48 @@ defmodule CheckEscript do
 
   ## Test partitioning
 
-  Tests run in parallel partitions (default: 5). Each partition uses its own database.
+  Tests run in parallel partitions (default: 3). Each partition uses its own database.
   Use --partitions N to customize the number of partitions based on your CPU cores.
+
+  ### Database setup for partitions
+
+  Each partition needs its own database to avoid deadlocks and connection limit issues.
+  In `config/runtime.exs`, use `MIX_TEST_PARTITION` to create per-partition database URLs:
+
+      # config/runtime.exs
+      partition = System.get_env("MIX_TEST_PARTITION", "")
+
+      test_database_url =
+        System.get_env("TEST_DATABASE_URL")
+        |> URI.parse()
+        |> then(fn uri ->
+          db_name = String.trim_leading(uri.path || "", "/")
+          Map.put(uri, :path, "/\#{db_name}\#{partition}")
+        end)
+        |> URI.to_string()
+
+      config :my_app, MyApp.Repo, url: test_database_url
+
+  This creates databases like `my_app_test1`, `my_app_test2`, etc.
+
+  ### Avoiding DB connection limits
+
+  With N partitions, your database needs at least `N * pool_size` connections.
+  Increase `max_connections` in PostgreSQL if you see connection errors:
+
+      # PostgreSQL config (or docker run command)
+      postgres -c max_connections=400 -c shared_buffers=2GB
+
+  Consider reducing `pool_size` per partition in `config/test.exs`:
+
+      config :my_app, MyApp.Repo, pool_size: 10
+
+  With 3 partitions and pool_size 10, you need at least 30 connections.
+
+  ### Scheduler tuning
+
+  AlCheck automatically limits BEAM schedulers per partition to avoid CPU contention:
+  `schedulers_online / partitions`. With 10 cores and 3 partitions, each gets ~3 schedulers.
 
   ## Failed test workflow
 
