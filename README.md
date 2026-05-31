@@ -19,7 +19,7 @@ A parallel code quality checker for Elixir projects. Runs format, compile, credo
 - **Modified Tests** - run only tests changed on your branch (granular line-level or whole modules)
 - **Failed Test Rerun** - re-run only previously failed tests
 - **Auto-fix** - configurable fix commands for format and credo issues
-- **Real-time Progress** - animated status lines with test counts and spinner
+- **Real-time Progress** - animated status lines with test counts
 - **Configurable** - `.check.json` for all settings, `builtin:` checks for Elixir-powered logic
 
 ## Installation
@@ -34,13 +34,20 @@ def deps do
 end
 ```
 
-Then install globally:
+Then either install globally or build locally:
 
 ```bash
 mix deps.get
+
+# Option 1: Install globally
 mix check.install
 # if you use asdf
 asdf reshim
+
+# Option 2: Build locally (no global install)
+mix check.build
+./deps/al_check/scripts/check
+# or add an alias: alias check='./scripts/check'
 ```
 
 ## Quick Start
