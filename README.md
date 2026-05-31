@@ -44,10 +44,10 @@ mix check.install
 # if you use asdf
 asdf reshim
 
-# Option 2: Build locally (no global install)
+# Option 2: Build locally
 mix check.build
 ./deps/al_check/scripts/check
-# or add an alias: alias check='./scripts/check'
+# or add an alias: alias check='path/to/app/deps/scripts/check'
 ```
 
 ## Quick Start
