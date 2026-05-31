@@ -36,14 +36,14 @@ jobs:
     - name: Restore dependencies cache
       uses: actions/cache@v3
       with:
-        path: |
-          deps
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock', '*/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-
+        path: deps
+        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
+        restore-keys: ${{ runner.os }}-deps-
 
-    - name: Install dependencies
-      run: mix deps.get
+    - name: Install and compile dependencies
+      run: |
+        mix deps.get
+        mix deps.compile
 
     - name: Compile
       run: mix compile --warnings-as-errors
@@ -90,14 +90,14 @@ jobs:
     - name: Restore dependencies cache
       uses: actions/cache@v3
       with:
-        path: |
-          deps
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock', '*/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-
+        path: deps
+        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
+        restore-keys: ${{ runner.os }}-deps-
 
-    - name: Install dependencies
-      run: mix deps.get
+    - name: Install and compile dependencies
+      run: |
+        mix deps.get
+        mix deps.compile
 
     - name: Compile
       run: mix compile
@@ -202,14 +202,14 @@ jobs:
     - name: Restore dependencies cache
       uses: actions/cache@v3
       with:
-        path: |
-          deps
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-
+        path: deps
+        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
+        restore-keys: ${{ runner.os }}-deps-
 
-    - name: Install dependencies
-      run: mix deps.get
+    - name: Install and compile dependencies
+      run: |
+        mix deps.get
+        mix deps.compile
 
     - name: Check Formatting
       run: mix format --check-formatted
@@ -238,14 +238,14 @@ jobs:
     - name: Restore dependencies cache
       uses: actions/cache@v3
       with:
-        path: |
-          deps
-          _build
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-
+        path: deps
+        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
+        restore-keys: ${{ runner.os }}-deps-
 
-    - name: Install dependencies
-      run: mix deps.get
+    - name: Install and compile dependencies
+      run: |
+        mix deps.get
+        mix deps.compile
 
     - name: Restore PLT cache
       id: plt-cache
