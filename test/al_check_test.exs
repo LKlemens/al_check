@@ -107,4 +107,48 @@ defmodule AlCheckTest do
       assert output =~ "Did you mean --coverage?"
     end
   end
+
+  describe "version mismatch warning" do
+    @tag :tmp_dir
+    test "warns when dep version is newer", %{tmp_dir: tmp_dir} do
+      dep_dir = Path.join([tmp_dir, "deps", "al_check"])
+      File.mkdir_p!(dep_dir)
+      File.write!(Path.join(dep_dir, "mix.exs"), ~s|@version "99.0.0"|)
+
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        output = capture_io(fn -> CheckEscript.main(["--version"]) end)
+
+        assert output =~ "outdated"
+        assert output =~ "99.0.0"
+        assert output =~ "mix check.install"
+      after
+        File.cd!(original_dir)
+      end
+    end
+
+    @tag :tmp_dir
+    test "no warning when dep version is same or older", %{tmp_dir: tmp_dir} do
+      dep_dir = Path.join([tmp_dir, "deps", "al_check"])
+      File.mkdir_p!(dep_dir)
+      File.write!(Path.join(dep_dir, "mix.exs"), ~s|@version "0.0.1"|)
+
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        output = capture_io(fn -> CheckEscript.main(["--version"]) end)
+        refute output =~ "outdated"
+      after
+        File.cd!(original_dir)
+      end
+    end
+
+    test "no warning when no deps/al_check exists" do
+      output = capture_io(fn -> CheckEscript.main(["--version"]) end)
+      refute output =~ "outdated"
+    end
+  end
 end

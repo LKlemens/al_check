@@ -69,12 +69,12 @@ Use the `builtin:` prefix for checks that need Elixir logic:
 ```
 
 Available builtins:
-- `builtin:modified_tests` — runs only changed test lines vs base branch
-- `builtin:modified_test_modules` — runs whole modified test files vs base branch
+- `builtin:modified_tests` - runs only changed test lines vs base branch
+- `builtin:modified_test_modules` - runs whole modified test files vs base branch
 
 ### Placeholders
 
-Use `{base_branch}` in shell commands — replaced at runtime with the configured or auto-detected base branch:
+Use `{base_branch}` in shell commands - replaced at runtime with the configured or auto-detected base branch:
 
 ```json
 "my_check": {"run": "git diff {base_branch}... --stat"}
@@ -110,8 +110,8 @@ Coverage results are cached based on `cover/*.coverdata` hashes. Re-running `che
 ```
 
 Each entry can have:
-- `run` — the command to execute
-- `files` (optional) — glob pointing to output files from previous checks. File paths are extracted from their contents and passed as arguments to the command.
+- `run` - the command to execute
+- `files` (optional) - glob pointing to output files from previous checks. File paths are extracted from their contents and passed as arguments to the command.
 
 ## Output files
 

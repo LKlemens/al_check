@@ -46,9 +46,8 @@ check --only modified_tests --repeat 5  # Repeat modified tests
 - **Setup inside describe changed** → runs that describe block
 - **Describe line changed** → runs that describe block
 - **Test body changed** → runs only that specific test line
-- **Module-level change** → runs the whole file
 
-`modified_test_modules` is simpler — runs the entire file for any changed test module.
+`modified_test_modules` is simpler - runs the entire file for any changed test module.
 
 ## Coverage Workflow
 

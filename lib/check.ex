@@ -201,7 +201,23 @@ defmodule CheckEscript do
     repeat = resolve_repeat(opts[:repeat], invalid, config)
     opts = Keyword.put(opts, :repeat, repeat)
 
+    check_version_mismatch()
     dispatch(opts, mock_mode, fix_mode, config)
+  end
+
+  defp check_version_mismatch do
+    dep_mix = Path.join([File.cwd!(), "deps", "al_check", "mix.exs"])
+
+    with true <- File.exists?(dep_mix),
+         [_, dep_version] <- Regex.run(~r/@version\s+"([^"]+)"/, File.read!(dep_mix)),
+         :gt <- Version.compare(dep_version, @version) do
+      IO.puts([
+        IO.ANSI.format([
+          :yellow,
+          "Warning: check #{@version} is outdated (dep has #{dep_version}). Run: mix check.install"
+        ])
+      ])
+    end
   end
 
   defp dispatch(opts, mock_mode, fix_mode, config) do
