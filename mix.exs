@@ -1,7 +1,7 @@
 defmodule AlCheck.MixProject do
   use Mix.Project
 
-  @version "0.1.12"
+  @version "0.1.13"
   @source_url "https://github.com/LKlemens/al_check"
 
   def project do
@@ -69,7 +69,16 @@ defmodule AlCheck.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "LICENSE"],
+      extras: [
+        "README.md",
+        "guides/configuration.md",
+        "guides/test-partitioning.md",
+        "guides/workflows.md",
+        "LICENSE"
+      ],
+      groups_for_extras: [
+        Guides: ~r/guides\/.*/
+      ],
       source_ref: "v#{@version}",
       source_url: @source_url
     ]
