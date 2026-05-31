@@ -186,6 +186,8 @@ defmodule CheckEscript do
   def main(args) do
     {opts, mock_mode, fix_mode, invalid} = parse_args(args)
 
+    reject_invalid_flags(invalid)
+
     config =
       case Config.load() do
         {:ok, config} ->
@@ -281,6 +283,40 @@ defmodule CheckEscript do
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
     {opts, mock_mode, fix_mode, invalid}
+  end
+
+  @allowed_invalid ~w(--repeat --test-args)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help --init --version --coverage --test-args)
+
+  defp reject_invalid_flags(invalid) do
+    unknown =
+      invalid
+      |> Enum.map(fn {switch, _} -> switch end)
+      |> Enum.reject(&(&1 in @allowed_invalid))
+      |> Enum.filter(&(String.starts_with?(&1, "--") and not String.contains?(&1, " ")))
+
+    if Enum.any?(unknown) do
+      Enum.each(unknown, fn flag ->
+        IO.puts(:stderr, "Unknown flag: #{flag}")
+        suggest_similar(flag)
+      end)
+
+      IO.puts(:stderr, "Run 'check --help' for available options")
+      System.halt(1)
+    end
+  end
+
+  defp suggest_similar(flag) do
+    case find_closest_flag(flag) do
+      {match, score} when score > 0.8 -> IO.puts(:stderr, "Did you mean #{match}?")
+      _ -> :ok
+    end
+  end
+
+  defp find_closest_flag(flag) do
+    @valid_flags
+    |> Enum.map(fn valid -> {valid, String.jaro_distance(flag, valid)} end)
+    |> Enum.max_by(fn {_, score} -> score end)
   end
 
   defp resolve_repeat(repeat, _invalid, _config) when is_integer(repeat), do: repeat

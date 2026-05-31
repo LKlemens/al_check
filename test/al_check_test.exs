@@ -1,7 +1,10 @@
 defmodule AlCheckTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
+  use Mimic
 
   import ExUnit.CaptureIO
+
+  setup :verify_on_exit!
 
   test "version is set" do
     assert is_binary(Mix.Project.config()[:version])
@@ -55,5 +58,53 @@ defmodule AlCheckTest do
       end)
 
     assert output =~ "All checks passed"
+  end
+
+  describe "invalid flags" do
+    test "rejects unknown flag with suggestion" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      output =
+        capture_io(:stderr, fn ->
+          catch_throw(CheckEscript.main(["--repat"]))
+        end)
+
+      assert output =~ "Unknown flag: --repat"
+      assert output =~ "Did you mean --repeat?"
+    end
+
+    test "rejects unknown flag without suggestion when no close match" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      output =
+        capture_io(:stderr, fn ->
+          catch_throw(CheckEscript.main(["--bogus"]))
+        end)
+
+      assert output =~ "Unknown flag: --bogus"
+      refute output =~ "Did you mean"
+    end
+
+    test "suggests --fast for --fastt" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      output =
+        capture_io(:stderr, fn ->
+          catch_throw(CheckEscript.main(["--fastt"]))
+        end)
+
+      assert output =~ "Did you mean --fast?"
+    end
+
+    test "suggests --coverage for --coverge" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      output =
+        capture_io(:stderr, fn ->
+          catch_throw(CheckEscript.main(["--coverge"]))
+        end)
+
+      assert output =~ "Did you mean --coverage?"
+    end
   end
 end
