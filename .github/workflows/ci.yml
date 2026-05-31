@@ -110,7 +110,7 @@ jobs:
 
     - name: Prepare comment with coverage percentages
       run: |
-        COVERAGE=$(awk '/[0-9.]+%[[:space:]]*\|[[:space:]]*Total/ {gsub("%",""); print $1; exit}' raport)
+        COVERAGE=$(awk '/Total/ && /[0-9.]+%/ {match($0, /[0-9.]+%/); pct=substr($0, RSTART, RLENGTH-1); print pct; exit}' raport)
         echo "COVERAGE=$COVERAGE" | tee -a $GITHUB_ENV
         echo "COLOR=$(./.github/workflows/scripts/color.sh $COVERAGE)" | tee -a $GITHUB_ENV
         echo "BRANCH=${GITHUB_REF#refs/heads/}" | tee -a $GITHUB_ENV
