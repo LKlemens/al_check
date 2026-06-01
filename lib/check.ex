@@ -109,7 +109,12 @@ defmodule Check do
     tasks = Tasks.select(all_tasks, opts, partitions, config)
 
     if Tasks.has_test_tasks?(tasks) do
-      saved_args = if coverage.mod == :native, do: "#{test_args} --cover", else: test_args
+      saved_args =
+        case {coverage.mod, test_args} do
+          {:native, nil} -> "--cover"
+          {:native, args} -> "#{args} --cover"
+          {_, args} -> args
+        end
       Failed.save_test_args(saved_args)
       Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
     end

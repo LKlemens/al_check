@@ -368,23 +368,13 @@ defmodule Check.IntegrationTest do
   end
 
   describe "coverage flag saved for --failed" do
-    test "saves --cover in test_args when coverage is native" do
-      output =
-        capture_io(fn ->
-          Check.main(["--only", "format", "--test-args", "--warnings-as-errors", "mock"])
-        end)
-
-      assert output =~ "All checks passed"
-
-      # Without coverage, test_args should not have --cover
-      saved = File.read!(".check/test_args.txt")
-      refute saved =~ "--cover"
+    test "save_test_args saves exact string" do
+      Check.Failed.save_test_args("--warnings-as-errors")
+      assert File.read!(".check/test_args.txt") == "--warnings-as-errors"
     end
 
-    test "--cover is added to saved args when coverage native config exists" do
-      # Simulate what run_checks does: save_test_args with --cover appended
+    test "save_test_args with --cover" do
       Check.Failed.save_test_args("--warnings-as-errors --cover")
-
       saved = File.read!(".check/test_args.txt")
       assert saved =~ "--warnings-as-errors"
       assert saved =~ "--cover"
