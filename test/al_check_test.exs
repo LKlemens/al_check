@@ -123,7 +123,7 @@ defmodule AlCheckTest do
 
         assert output =~ "outdated"
         assert output =~ "99.0.0"
-        assert output =~ "mix check.install"
+        assert output =~ "mix check.update"
       after
         File.cd!(original_dir)
       end

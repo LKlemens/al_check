@@ -41,6 +41,7 @@ defmodule Check.Config do
                       ],
                       "db_setup" => "mix ecto.setup",
                       "db_drop" => "mix ecto.drop",
+                      "update" => ["mix deps.update al_check", "mix check.install"],
                       "coverage" => %{"mod" => "native", "limit" => 80, "html" => false},
                       "checks" => @default_checks
                     },
@@ -84,7 +85,17 @@ defmodule Check.Config do
       IO.puts([IO.ANSI.format([:yellow, "#{config_path} already exists"])])
     else
       File.write!(config_path, @default_config)
-      IO.puts([IO.ANSI.format([:green, "Created #{config_path}"])])
+      IO.puts([IO.ANSI.format([:green, "Created #{config_path}\n"])])
+
+      IO.puts([
+        IO.ANSI.format([
+          :yellow,
+          "Tip: Add your version manager's reshim to \"update\" in .check.json:\n" <>
+            "  asdf:  \"asdf reshim\"\n" <>
+            "  mise:  \"mise reshim\"\n" <>
+            "  rtx:   \"rtx reshim\""
+        ])
+      ])
     end
   end
 
@@ -150,7 +161,7 @@ defmodule Check.Config do
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  @known_keys ~w(run fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix db_setup db_drop)
+  @known_keys ~w(run fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix db_setup db_drop update)
   @known_coverage_keys ~w(mod limit html baseline_cmd)
   @known_check_keys ~w(name run)
 

@@ -67,7 +67,7 @@ defmodule Check do
       IO.puts([
         IO.ANSI.format([
           :yellow,
-          "Warning: check #{@version} is outdated (dep has #{dep_version}). Run: mix check.install"
+          "Warning: check #{@version} is outdated (dep has #{dep_version}). Run: mix check.update"
         ])
       ])
     end
