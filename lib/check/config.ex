@@ -107,24 +107,29 @@ defmodule Check.Config do
     {name, "sh", ["-c", run]}
   end
 
-  def base_branch(config) do
-    config["base_branch"] || detect_base_branch()
+  def base_branch(config, opts \\ []) do
+    config["base_branch"] || detect_base_branch(opts)
   end
 
   @base_branch_candidates ["main", "master", "origin/main", "origin/master"]
 
-  defp detect_base_branch do
+  defp detect_base_branch(opts) do
     case Enum.find(@base_branch_candidates, &branch_exists?/1) do
       nil ->
-        IO.puts(
-          :stderr,
-          "Could not detect base branch (tried #{Enum.join(@base_branch_candidates, ", ")}). Set \"base_branch\" in .check.json"
-        )
+        if Keyword.get(opts, :warn, false) do
+          IO.puts(
+            :stderr,
+            "Could not detect base branch (tried #{Enum.join(@base_branch_candidates, ", ")}). Set \"base_branch\" in .check.json"
+          )
+        end
 
-        System.halt(1)
+        nil
 
       branch ->
-        IO.puts("Detected base git branch: #{branch}")
+        if Keyword.get(opts, :log, false) do
+          IO.puts("Detected base git branch: #{branch}")
+        end
+
         branch
     end
   end

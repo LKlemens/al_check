@@ -8,15 +8,21 @@ defmodule Check.ModifiedTests do
 
   def run(test_opts \\ %{}) do
     config = load_config()
-    base_branch = Check.Config.base_branch(config)
-    modified_files = get_modified_test_files(base_branch)
 
-    if Enum.empty?(modified_files) do
-      IO.puts("No modified test files on this branch")
-      {0, ""}
-    else
-      test_targets = Enum.flat_map(modified_files, &targets_for_file(&1, base_branch))
-      run_tests(test_targets, test_opts)
+    case Check.Config.base_branch(config, warn: true, log: true) do
+      nil ->
+        {1, ""}
+
+      base_branch ->
+        modified_files = get_modified_test_files(base_branch)
+
+        if Enum.empty?(modified_files) do
+          IO.puts("No modified test files on this branch")
+          {0, ""}
+        else
+          test_targets = Enum.flat_map(modified_files, &targets_for_file(&1, base_branch))
+          run_tests(test_targets, test_opts)
+        end
     end
   end
 

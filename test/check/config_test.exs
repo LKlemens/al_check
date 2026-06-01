@@ -134,13 +134,22 @@ defmodule Check.ConfigTest do
     test "auto-detects when not set" do
       output =
         ExUnit.CaptureIO.capture_io(fn ->
-          branch = Config.base_branch(%{})
+          branch = Config.base_branch(%{}, log: true)
           send(self(), {:branch, branch})
         end)
 
       assert_received {:branch, branch}
       assert branch in ["main", "master", "origin/main", "origin/master"]
       assert output =~ "Detected base git branch"
+    end
+
+    test "silent by default" do
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          Config.base_branch(%{})
+        end)
+
+      assert output == ""
     end
   end
 

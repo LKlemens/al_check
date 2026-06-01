@@ -3,7 +3,17 @@ defmodule Check.ModifiedTestModules do
 
   def run(test_opts \\ %{}) do
     config = load_config()
-    base_branch = Check.Config.base_branch(config)
+
+    case Check.Config.base_branch(config, warn: true, log: true) do
+      nil ->
+        {1, ""}
+
+      base_branch ->
+        run_with_branch(base_branch, test_opts)
+    end
+  end
+
+  defp run_with_branch(base_branch, test_opts) do
     files = get_modified_test_files(base_branch)
 
     if Enum.empty?(files) do

@@ -30,7 +30,7 @@ defmodule Check.Tasks do
       )
     end
 
-    base_branch = Config.base_branch(config)
+    base_branch = Config.base_branch(config) || ""
 
     checks_config
     |> Map.drop(["test"])
