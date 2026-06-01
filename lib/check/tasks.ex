@@ -62,7 +62,7 @@ defmodule Check.Tasks do
            ], partition, partitions}
         else
           {test_runner, coverage_flags} = test_runner_cmd(coverage.mod)
-          export_flag = if coverage.mod == :native, do: " --export-coverage partition-#{partition}", else: ""
+          export_flag = export_coverage_flag(coverage.mod, partition)
           resolved_flags = String.replace(test_flags, "{partition}", to_string(partition))
 
           {task_name, "sh",
@@ -130,7 +130,10 @@ defmodule Check.Tasks do
 
   def build_test_cmd(test_dir, test_args, repeat, partitions, coverage) do
     {runner, _} = test_runner_cmd(coverage.mod)
-    cover_flags = if coverage.mod == :native, do: " --cover --export-coverage partition-{N}", else: ""
+
+    cover_flags =
+      if coverage.mod == :native, do: " --cover --export-coverage partition-{N}", else: ""
+
     parts = ["mix #{runner}#{cover_flags}"]
     parts = if test_dir, do: parts ++ [test_dir], else: parts
     parts = parts ++ [test_args || "--warnings-as-errors"]
@@ -171,6 +174,9 @@ defmodule Check.Tasks do
         partitions
     end
   end
+
+  defp export_coverage_flag(:native, partition), do: " --export-coverage partition-#{partition}"
+  defp export_coverage_flag(_, _), do: ""
 
   def test_runner_cmd(:native), do: {"test", " --cover"}
   def test_runner_cmd(:coveralls), do: {"coveralls", ""}
