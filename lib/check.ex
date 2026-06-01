@@ -108,16 +108,7 @@ defmodule Check do
     all_tasks = Tasks.define(mock_mode, partitions, test_dir, test_args, repeat, config, coverage)
     tasks = Tasks.select(all_tasks, opts, partitions, config)
 
-    if Tasks.has_test_tasks?(tasks) do
-      saved_args =
-        case {coverage.mod, test_args} do
-          {:native, nil} -> "--cover"
-          {:native, args} -> "#{args} --cover"
-          {_, args} -> args
-        end
-      Failed.save_test_args(saved_args)
-      Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
-    end
+    prepare_test_run(tasks, test_args, coverage)
 
     verbose = opts[:verbose] || false
     test_cmd = Tasks.build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
@@ -128,6 +119,17 @@ defmodule Check do
 
     Summary.print(results, total_seconds, tasks, coverage)
   end
+
+  defp prepare_test_run(tasks, test_args, coverage) do
+    if Tasks.has_test_tasks?(tasks) do
+      Failed.save_test_args(test_args_with_cover(test_args, coverage))
+      Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
+    end
+  end
+
+  defp test_args_with_cover(nil, %{mod: :native}), do: "--cover"
+  defp test_args_with_cover(args, %{mod: :native}), do: "#{args} --cover"
+  defp test_args_with_cover(args, _coverage), do: args
 
   defp parse_args(args) do
     {args, test_args} = extract_test_args(args)
