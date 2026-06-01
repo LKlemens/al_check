@@ -174,4 +174,60 @@ defmodule AlCheckTest do
       refute output =~ "Merging coverage"
     end
   end
+
+  describe "partition commands" do
+    test "--setup-db runs db setup for partitions" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      expect(System, :cmd, fn "sh",
+                              ["-c", "MIX_ENV=test MIX_TEST_PARTITION=1 mix ecto.setup"],
+                              _opts ->
+        {"", 0}
+      end)
+
+      output =
+        capture_io(fn ->
+          Check.main(["--setup-db", "--partitions", "1"])
+        end)
+
+      assert output =~ "mix ecto.setup"
+      assert output =~ "All 1 partition(s) done"
+    end
+
+    test "--drop-db runs db drop for partitions" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      expect(System, :cmd, fn "sh",
+                              ["-c", "MIX_ENV=test MIX_TEST_PARTITION=1 mix ecto.drop"],
+                              _opts ->
+        {"", 0}
+      end)
+
+      output =
+        capture_io(fn ->
+          Check.main(["--drop-db", "--partitions", "1"])
+        end)
+
+      assert output =~ "mix ecto.drop"
+      assert output =~ "All 1 partition(s) done"
+    end
+
+    test "--for-partitions runs custom command" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      expect(System, :cmd, fn "sh",
+                              ["-c", "MIX_ENV=test MIX_TEST_PARTITION=1 echo hello"],
+                              _opts ->
+        {"", 0}
+      end)
+
+      output =
+        capture_io(fn ->
+          Check.main(["--for-partitions", "echo hello", "--partitions", "1"])
+        end)
+
+      assert output =~ "echo hello"
+      assert output =~ "All 1 partition(s) done"
+    end
+  end
 end
