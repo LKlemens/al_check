@@ -62,12 +62,13 @@ defmodule Check.Tasks do
            ], partition, partitions}
         else
           {test_runner, coverage_flags} = test_runner_cmd(coverage.mod)
+          export_flag = if coverage.mod == :native, do: " --export-coverage partition-#{partition}", else: ""
           resolved_flags = String.replace(test_flags, "{partition}", to_string(partition))
 
           {task_name, "sh",
            [
              "-c",
-             "ELIXIR_ERL_OPTIONS='+S #{procs}:#{procs}' MIX_TEST_PARTITION=#{partition} mix #{test_runner} #{test_path} #{resolved_flags}#{coverage_flags} --partitions #{partitions}"
+             "ELIXIR_ERL_OPTIONS='+S #{procs}:#{procs}' MIX_TEST_PARTITION=#{partition} mix #{test_runner} #{test_path} #{resolved_flags}#{coverage_flags}#{export_flag} --partitions #{partitions}"
            ], partition, partitions}
         end
 
@@ -129,8 +130,8 @@ defmodule Check.Tasks do
 
   def build_test_cmd(test_dir, test_args, repeat, partitions, coverage) do
     {runner, _} = test_runner_cmd(coverage.mod)
-    cover_flag = if coverage.mod == :native, do: " --cover", else: ""
-    parts = ["mix #{runner}#{cover_flag}"]
+    cover_flags = if coverage.mod == :native, do: " --cover --export-coverage partition-{N}", else: ""
+    parts = ["mix #{runner}#{cover_flags}"]
     parts = if test_dir, do: parts ++ [test_dir], else: parts
     parts = parts ++ [test_args || "--warnings-as-errors"]
     parts = if repeat, do: parts ++ ["--repeat-until-failure #{repeat}"], else: parts
