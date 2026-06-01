@@ -1,4 +1,4 @@
-defmodule CheckEscript.UI do
+defmodule Check.UI do
   @moduledoc "Status line updates, task formatting, and ANSI helpers."
 
   def update_task_line(index, name, status, total_tasks, test_counts) do

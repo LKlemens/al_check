@@ -1,10 +1,10 @@
-defmodule CheckEscript.ModifiedTestModulesTest do
+defmodule Check.ModifiedTestModulesTest do
   use ExUnit.Case, async: false
   use Mimic
 
   import ExUnit.CaptureIO
 
-  alias CheckEscript.ModifiedTestModules
+  alias Check.ModifiedTestModules
 
   setup :verify_on_exit!
 
@@ -30,7 +30,7 @@ defmodule CheckEscript.ModifiedTestModulesTest do
       expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
       expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+      expect(Check.Port, :open, fn "mix", ["test" | args] ->
         assert file in args
 
         Port.open({:spawn_executable, System.find_executable("echo")}, [
@@ -61,7 +61,7 @@ defmodule CheckEscript.ModifiedTestModulesTest do
       File.mkdir_p!("test")
       File.write!("test/foo_test.exs", "defmodule FooTest do\nend\n")
 
-      expect(CheckEscript.Port, :open, fn "mix", args ->
+      expect(Check.Port, :open, fn "mix", args ->
         assert "--warnings-as-errors" in args
         assert "--repeat-until-failure" in args
         assert "5" in args

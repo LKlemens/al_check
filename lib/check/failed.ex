@@ -1,4 +1,4 @@
-defmodule CheckEscript.Failed do
+defmodule Check.Failed do
   @moduledoc "Failed test extraction and re-running."
 
   def run(repeat) do
@@ -80,9 +80,9 @@ defmodule CheckEscript.Failed do
 
     IO.puts([IO.ANSI.format([:cyan, "Test command: mix #{Enum.join(all_args, " ")}\n"])])
 
-    port = CheckEscript.Port.open("mix", all_args ++ failed_tests)
+    port = Check.Port.open("mix", all_args ++ failed_tests)
 
-    status = CheckEscript.Runner.stream_port_output(port)
+    status = Check.Runner.stream_port_output(port)
 
     if status == 0 do
       IO.puts([

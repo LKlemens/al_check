@@ -1,9 +1,9 @@
-defmodule CheckEscript.UITest do
+defmodule Check.UITest do
   use ExUnit.Case, async: true
 
   import ExUnit.CaptureIO
 
-  alias CheckEscript.UI
+  alias Check.UI
 
   describe "format_task_status/2" do
     test "running with test counts" do

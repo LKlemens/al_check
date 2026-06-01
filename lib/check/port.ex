@@ -1,4 +1,4 @@
-defmodule CheckEscript.Port do
+defmodule Check.Port do
   @moduledoc "Wrapper around Port.open for mockability in tests."
 
   def open(cmd, args) do

@@ -1,4 +1,4 @@
-defmodule CheckEscript.Fix do
+defmodule Check.Fix do
   @moduledoc "Auto-fix mode — runs configurable fix commands."
 
   @default_fix [
@@ -61,7 +61,7 @@ defmodule CheckEscript.Fix do
   end
 
   defp load_fix_commands do
-    case CheckEscript.Config.load() do
+    case Check.Config.load() do
       {:ok, config} when is_map_key(config, "fix") -> config["fix"]
       _ -> @default_fix
     end

@@ -1,7 +1,7 @@
-defmodule CheckEscript.Tasks do
+defmodule Check.Tasks do
   @moduledoc "Task definition, selection, expansion, and partitioning."
 
-  alias CheckEscript.Config
+  alias Check.Config
 
   def define(mock_mode, partitions, test_dir, test_args, repeat, config, coverage) do
     base_tasks = define_base_tasks(mock_mode, config)

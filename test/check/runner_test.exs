@@ -1,10 +1,10 @@
-defmodule CheckEscript.RunnerTest do
+defmodule Check.RunnerTest do
   use ExUnit.Case, async: true
   use Mimic
 
   import ExUnit.CaptureIO
 
-  alias CheckEscript.Runner
+  alias Check.Runner
 
   setup :verify_on_exit!
 
@@ -73,7 +73,7 @@ defmodule CheckEscript.RunnerTest do
 
       io =
         capture_io(fn ->
-          {status, output} = CheckEscript.ModifiedTests.run()
+          {status, output} = Check.ModifiedTests.run()
           send(self(), {:result, status, output})
         end)
 
@@ -87,7 +87,7 @@ defmodule CheckEscript.RunnerTest do
 
       io =
         capture_io(fn ->
-          {status, output} = CheckEscript.ModifiedTestModules.run()
+          {status, output} = Check.ModifiedTestModules.run()
           send(self(), {:result, status, output})
         end)
 

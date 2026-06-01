@@ -1,4 +1,4 @@
-defmodule CheckEscript.Watch do
+defmodule Check.Watch do
   @moduledoc "Real-time monitoring of test partition files."
 
   def run do
@@ -23,7 +23,7 @@ defmodule CheckEscript.Watch do
       "\n"
     ])
 
-    port = CheckEscript.Port.open("tail", ["-f", "-q", "-n", "+1" | partition_files])
-    CheckEscript.Runner.stream_port_output(port)
+    port = Check.Port.open("tail", ["-f", "-q", "-n", "+1" | partition_files])
+    Check.Runner.stream_port_output(port)
   end
 end

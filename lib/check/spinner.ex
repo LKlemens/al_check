@@ -1,4 +1,4 @@
-defmodule CheckEscript.Spinner do
+defmodule Check.Spinner do
   @moduledoc "Animated spinner for long-running operations."
 
   @frames ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]

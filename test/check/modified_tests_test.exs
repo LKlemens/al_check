@@ -1,10 +1,10 @@
-defmodule CheckEscript.ModifiedTestsTest do
+defmodule Check.ModifiedTestsTest do
   use ExUnit.Case, async: false
   use Mimic
 
   import ExUnit.CaptureIO
 
-  alias CheckEscript.ModifiedTests
+  alias Check.ModifiedTests
 
   setup :verify_on_exit!
 
@@ -156,7 +156,7 @@ defmodule CheckEscript.ModifiedTestsTest do
       # hunk touching line 3 (setup inside describe)
       expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -3,1 +3,1 @@\n", 0} end)
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+      expect(Check.Port, :open, fn "mix", ["test" | args] ->
         # should run describe block (line 2), not whole file
         assert Enum.any?(args, &String.contains?(&1, ":2"))
         refute file in args
@@ -193,7 +193,7 @@ defmodule CheckEscript.ModifiedTestsTest do
       # hunk touching line 2 (module-level setup)
       expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+      expect(Check.Port, :open, fn "mix", ["test" | args] ->
         # should run whole file
         assert file in args
 
@@ -228,7 +228,7 @@ defmodule CheckEscript.ModifiedTestsTest do
       # hunk touching line 2 (describe line)
       expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+      expect(Check.Port, :open, fn "mix", ["test" | args] ->
         assert Enum.any?(args, &String.contains?(&1, ":2"))
 
         Port.open({:spawn_executable, System.find_executable("echo")}, [
@@ -281,7 +281,7 @@ defmodule CheckEscript.ModifiedTestsTest do
       # git diff -U0 returns a hunk touching line 2 (setup)
       expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
       # mock Port.open for mix test
-      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+      expect(Check.Port, :open, fn "mix", ["test" | args] ->
         assert file in args
 
         Port.open({:spawn_executable, System.find_executable("echo")}, [
@@ -321,7 +321,7 @@ defmodule CheckEscript.ModifiedTestsTest do
       # hunk touching line 7 (inside "second" test)
       expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -7,1 +7,1 @@\n", 0} end)
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test" | args] ->
+      expect(Check.Port, :open, fn "mix", ["test" | args] ->
         assert Enum.any?(args, &String.contains?(&1, ":6"))
 
         Port.open({:spawn_executable, System.find_executable("echo")}, [

@@ -1,4 +1,4 @@
-defmodule CheckEscript.Config do
+defmodule Check.Config do
   @moduledoc "Config loading, parsing, initialization, and defaults."
 
   @default_checks %{

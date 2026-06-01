@@ -1,4 +1,4 @@
-defmodule CheckEscript.WatchTest do
+defmodule Check.WatchTest do
   use ExUnit.Case, async: false
   use Mimic
 
@@ -17,7 +17,7 @@ defmodule CheckEscript.WatchTest do
 
       output =
         capture_io(fn ->
-          catch_throw(CheckEscript.Watch.run())
+          catch_throw(Check.Watch.run())
         end)
 
       assert output =~ "No test partition files found"
@@ -29,7 +29,7 @@ defmodule CheckEscript.WatchTest do
       File.write!(".check/test_partition_1.txt", "test output")
 
       # Mock Port.open to return a port that exits immediately
-      expect(CheckEscript.Port, :open, fn "tail", args ->
+      expect(Check.Port, :open, fn "tail", args ->
         assert "-f" in args
         # Return a port that just exits
         Port.open({:spawn_executable, System.find_executable("echo")}, [
@@ -41,7 +41,7 @@ defmodule CheckEscript.WatchTest do
 
       output =
         capture_io(fn ->
-          CheckEscript.Watch.run()
+          Check.Watch.run()
         end)
 
       assert output =~ "Watching"

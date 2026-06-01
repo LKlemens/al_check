@@ -1,7 +1,7 @@
-defmodule CheckEscript.TasksTest do
+defmodule Check.TasksTest do
   use ExUnit.Case, async: true
 
-  alias CheckEscript.Tasks
+  alias Check.Tasks
 
   describe "has_test_tasks?/1" do
     test "true when partition tasks present" do

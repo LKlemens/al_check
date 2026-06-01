@@ -1,7 +1,7 @@
-defmodule CheckEscript.ConfigTest do
+defmodule Check.ConfigTest do
   use ExUnit.Case, async: true
 
-  alias CheckEscript.Config
+  alias Check.Config
 
   describe "parse_coverage/1" do
     test "parses full config" do

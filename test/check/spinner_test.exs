@@ -1,7 +1,7 @@
-defmodule CheckEscript.SpinnerTest do
+defmodule Check.SpinnerTest do
   use ExUnit.Case, async: true
 
-  alias CheckEscript.Spinner
+  alias Check.Spinner
 
   test "start returns a pid" do
     pid = Spinner.start("Testing")

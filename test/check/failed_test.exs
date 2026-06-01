@@ -1,8 +1,8 @@
-defmodule CheckEscript.FailedTest do
+defmodule Check.FailedTest do
   use ExUnit.Case, async: false
   use Mimic
 
-  alias CheckEscript.Failed
+  alias Check.Failed
 
   setup :verify_on_exit!
 
@@ -176,7 +176,7 @@ defmodule CheckEscript.FailedTest do
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Failed.save_test_args("--warnings-as-errors")
 
-      expect(CheckEscript.Port, :open, fn "mix", args ->
+      expect(Check.Port, :open, fn "mix", args ->
         assert "test" in args
         assert "test/foo_test.exs:10" in args
 
@@ -202,7 +202,7 @@ defmodule CheckEscript.FailedTest do
       File.write!(".check/failed_tests.txt", "test/bar_test.exs:20")
       Failed.save_test_args("--warnings-as-errors")
 
-      expect(CheckEscript.Port, :open, fn "mix", _args ->
+      expect(Check.Port, :open, fn "mix", _args ->
         Port.open({:spawn_executable, System.find_executable("sh")}, [
           :binary,
           :exit_status,
@@ -224,7 +224,7 @@ defmodule CheckEscript.FailedTest do
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Failed.save_test_args("--warnings-as-errors")
 
-      expect(CheckEscript.Port, :open, fn "mix", args ->
+      expect(Check.Port, :open, fn "mix", args ->
         assert "--repeat-until-failure" in args
         assert "5" in args
 
@@ -245,7 +245,7 @@ defmodule CheckEscript.FailedTest do
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Failed.save_test_args("--cover")
 
-      expect(CheckEscript.Port, :open, fn "mix", args ->
+      expect(Check.Port, :open, fn "mix", args ->
         assert "--cover" in args
         assert "--export-coverage" in args
         assert "failed" in args

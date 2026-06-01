@@ -1,4 +1,4 @@
-defmodule CheckEscript.ModifiedTests do
+defmodule Check.ModifiedTests do
   @moduledoc """
   Detects modified tests on the current branch vs base branch.
 
@@ -8,7 +8,7 @@ defmodule CheckEscript.ModifiedTests do
 
   def run(test_opts \\ %{}) do
     config = load_config()
-    base_branch = CheckEscript.Config.base_branch(config)
+    base_branch = Check.Config.base_branch(config)
     modified_files = get_modified_test_files(base_branch)
 
     if Enum.empty?(modified_files) do
@@ -21,7 +21,7 @@ defmodule CheckEscript.ModifiedTests do
   end
 
   defp load_config do
-    case CheckEscript.Config.load() do
+    case Check.Config.load() do
       {:ok, config} -> config
       _ -> %{}
     end
@@ -175,8 +175,8 @@ defmodule CheckEscript.ModifiedTests do
       ])
     ])
 
-    port = CheckEscript.Port.open("mix", args)
-    status = CheckEscript.Runner.stream_port_output(port)
+    port = Check.Port.open("mix", args)
+    status = Check.Runner.stream_port_output(port)
     {status, ""}
   end
 

@@ -1,10 +1,10 @@
-defmodule CheckEscript.FixTest do
+defmodule Check.FixTest do
   use ExUnit.Case, async: false
   use Mimic
 
   import ExUnit.CaptureIO
 
-  alias CheckEscript.Fix
+  alias Check.Fix
 
   setup :verify_on_exit!
 
@@ -133,7 +133,7 @@ defmodule CheckEscript.FixTest do
       File.write!(Path.join(tmp_dir, "credo_strict.txt"), "  ┃   lib/bar.ex:20:3\n")
 
       config = %{"fix" => [%{"run" => "echo fix", "files" => "#{tmp_dir}/credo*.txt"}]}
-      expect(CheckEscript.Config, :load, fn -> {:ok, config} end)
+      expect(Check.Config, :load, fn -> {:ok, config} end)
 
       expect(System, :cmd, fn "echo", ["fix", "lib/bar.ex", "lib/foo.ex"], _opts ->
         {"ok", 0}
@@ -148,7 +148,7 @@ defmodule CheckEscript.FixTest do
     @tag :tmp_dir
     test "skips when glob matches nothing", %{tmp_dir: tmp_dir} do
       config = %{"fix" => [%{"run" => "echo fix", "files" => "#{tmp_dir}/*.nothing"}]}
-      expect(CheckEscript.Config, :load, fn -> {:ok, config} end)
+      expect(Check.Config, :load, fn -> {:ok, config} end)
 
       output = capture_io(fn -> Fix.run() end)
 
@@ -160,7 +160,7 @@ defmodule CheckEscript.FixTest do
     test "runs custom fix commands" do
       config = %{"fix" => [%{"run" => "echo custom_fix"}]}
 
-      expect(CheckEscript.Config, :load, fn -> {:ok, config} end)
+      expect(Check.Config, :load, fn -> {:ok, config} end)
       expect(System, :cmd, fn "sh", ["-c", "echo custom_fix"], _opts -> {"done", 0} end)
 
       output = capture_io(fn -> Fix.run() end)

@@ -1,7 +1,7 @@
-defmodule CheckEscript.Summary do
+defmodule Check.Summary do
   @moduledoc "Results summary, failure details, and output persistence."
 
-  alias CheckEscript.{Coverage, Failed, Tasks}
+  alias Check.{Coverage, Failed, Tasks}
 
   def print(results, total_seconds, tasks, coverage) do
     IO.write("\n")

@@ -35,25 +35,25 @@ defmodule Mix.Tasks.Check.Install do
   def run(_args) do
     check_path = get_check_path()
 
-    spinner = CheckEscript.Spinner.start("Building escript in #{check_path}")
+    spinner = Check.Spinner.start("Building escript in #{check_path}")
 
     case build_escript(check_path) do
       :ok ->
-        CheckEscript.Spinner.stop(spinner)
-        spinner2 = CheckEscript.Spinner.start("Installing escript globally")
+        Check.Spinner.stop(spinner)
+        spinner2 = Check.Spinner.start("Installing escript globally")
 
         case install_escript(check_path) do
           :ok ->
-            CheckEscript.Spinner.stop(spinner2)
+            Check.Spinner.stop(spinner2)
             print_success()
 
           {:error, reason} ->
-            CheckEscript.Spinner.stop(spinner2)
+            Check.Spinner.stop(spinner2)
             Mix.raise("Failed to install escript: #{reason}")
         end
 
       {:error, reason} ->
-        CheckEscript.Spinner.stop(spinner)
+        Check.Spinner.stop(spinner)
         Mix.raise("Failed to build escript: #{reason}")
     end
   end

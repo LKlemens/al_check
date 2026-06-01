@@ -1,4 +1,4 @@
-defmodule CheckEscript.IntegrationTest do
+defmodule Check.IntegrationTest do
   use ExUnit.Case, async: false
   use Mimic
 
@@ -14,7 +14,7 @@ defmodule CheckEscript.IntegrationTest do
 
   describe "mock mode - format only" do
     test "runs only format in mock mode" do
-      output = capture_io(fn -> CheckEscript.main(["--only", "format", "mock"]) end)
+      output = capture_io(fn -> Check.main(["--only", "format", "mock"]) end)
 
       assert output =~ "Running code quality checks in parallel"
       assert output =~ "Formatting"
@@ -22,7 +22,7 @@ defmodule CheckEscript.IntegrationTest do
     end
 
     test "runs with verbose flag" do
-      output = capture_io(fn -> CheckEscript.main(["--only", "format", "--verbose", "mock"]) end)
+      output = capture_io(fn -> Check.main(["--only", "format", "--verbose", "mock"]) end)
 
       assert output =~ "Format check passed"
       assert output =~ "All checks passed"
@@ -31,7 +31,7 @@ defmodule CheckEscript.IntegrationTest do
     test "runs with custom partitions" do
       output =
         capture_io(fn ->
-          CheckEscript.main(["--only", "format", "--partitions", "1", "mock"])
+          Check.main(["--only", "format", "--partitions", "1", "mock"])
         end)
 
       assert output =~ "All checks passed"
@@ -47,8 +47,8 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          {results, seconds} = CheckEscript.Runner.run_checks(tasks, nil, "", 10, false)
-          catch_throw(CheckEscript.Summary.print(results, seconds, tasks, coverage))
+          {results, seconds} = Check.Runner.run_checks(tasks, nil, "", 10, false)
+          catch_throw(Check.Summary.print(results, seconds, tasks, coverage))
         end)
 
       assert output =~ "FAILURE DETAILS"
@@ -63,7 +63,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          {results, seconds} = CheckEscript.Runner.run_checks(tasks, nil, "", 10, false)
+          {results, seconds} = Check.Runner.run_checks(tasks, nil, "", 10, false)
           send(self(), {:results, results, seconds})
         end)
 
@@ -79,7 +79,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          {results, _} = CheckEscript.Runner.run_checks(tasks, nil, "", 10, false)
+          {results, _} = Check.Runner.run_checks(tasks, nil, "", 10, false)
           send(self(), {:results, results})
         end)
 
@@ -92,7 +92,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          CheckEscript.Runner.run_checks(tasks, nil, "", 10, true)
+          Check.Runner.run_checks(tasks, nil, "", 10, true)
         end)
 
       assert output =~ "verbose_output"
@@ -105,7 +105,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          {results, _} = CheckEscript.Runner.run_checks(tasks, nil, "mix test", 10, false)
+          {results, _} = Check.Runner.run_checks(tasks, nil, "mix test", 10, false)
           send(self(), {:results, results})
         end)
 
@@ -120,7 +120,7 @@ defmodule CheckEscript.IntegrationTest do
       ]
 
       capture_io(fn ->
-        {results, _} = CheckEscript.Runner.run_checks(tasks, nil, "mix test", 10, false)
+        {results, _} = Check.Runner.run_checks(tasks, nil, "mix test", 10, false)
         send(self(), {:results, results})
       end)
 
@@ -131,22 +131,22 @@ defmodule CheckEscript.IntegrationTest do
   describe "runner - determine_final_status" do
     test "returns :warnings when tests pass but warnings detected (status 0)" do
       output = "10 tests, 0 failures\nwarning: unused variable"
-      assert CheckEscript.Runner.determine_final_status(0, output) == :warnings
+      assert Check.Runner.determine_final_status(0, output) == :warnings
     end
 
     test "returns :warnings when mix exits non-zero but tests pass with warnings" do
       output = "10 tests, 0 failures\nwarning: unused variable"
-      assert CheckEscript.Runner.determine_final_status(1, output) == :warnings
+      assert Check.Runner.determine_final_status(1, output) == :warnings
     end
 
     test "returns 0 for coverage threshold failure" do
       output = "10 tests, 0 failures\nExpected minimum coverage"
-      assert CheckEscript.Runner.determine_final_status(1, output) == 0
+      assert Check.Runner.determine_final_status(1, output) == 0
     end
 
     test "passes through normal exit status" do
-      assert CheckEscript.Runner.determine_final_status(0, "all good") == 0
-      assert CheckEscript.Runner.determine_final_status(1, "10 tests, 3 failures") == 1
+      assert Check.Runner.determine_final_status(0, "all good") == 0
+      assert Check.Runner.determine_final_status(1, "10 tests, 3 failures") == 1
     end
   end
 
@@ -156,7 +156,7 @@ defmodule CheckEscript.IntegrationTest do
       tasks = [{"Format", "echo", ["ok"]}]
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
-      output = capture_io(fn -> CheckEscript.Summary.print(results, 1.5, tasks, coverage) end)
+      output = capture_io(fn -> Check.Summary.print(results, 1.5, tasks, coverage) end)
 
       assert output =~ "Completed in 1.5s"
       assert output =~ "All checks passed"
@@ -166,7 +166,7 @@ defmodule CheckEscript.IntegrationTest do
       results = [{"Credo", 0, "credo output"}, {"Credo Strict", 0, "strict output"}]
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
-      capture_io(fn -> CheckEscript.Summary.print(results, 1.0, [], coverage) end)
+      capture_io(fn -> Check.Summary.print(results, 1.0, [], coverage) end)
 
       assert File.read!(".check/credo.txt") == "credo output"
       assert File.read!(".check/credo_strict.txt") == "strict output"
@@ -179,7 +179,7 @@ defmodule CheckEscript.IntegrationTest do
       results = [{"Formatting", 0, "ok"}]
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
-      capture_io(fn -> CheckEscript.Summary.print(results, 1.0, [], coverage) end)
+      capture_io(fn -> Check.Summary.print(results, 1.0, [], coverage) end)
 
       refute File.exists?(".check/.format_failed")
     end
@@ -197,7 +197,7 @@ defmodule CheckEscript.IntegrationTest do
 
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
-      capture_io(fn -> CheckEscript.Summary.print(results, 1.0, tasks, coverage) end)
+      capture_io(fn -> Check.Summary.print(results, 1.0, tasks, coverage) end)
 
       content = File.read!(".check/check_tests.txt")
       assert content =~ "PARTITION 1/2"
@@ -214,7 +214,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          catch_throw(CheckEscript.Summary.print(results, 2.0, [], coverage))
+          catch_throw(Check.Summary.print(results, 2.0, [], coverage))
         end)
 
       assert output =~ "1 check(s) failed"
@@ -231,7 +231,7 @@ defmodule CheckEscript.IntegrationTest do
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
       capture_io(fn ->
-        catch_throw(CheckEscript.Summary.print(results, 1.0, [], coverage))
+        catch_throw(Check.Summary.print(results, 1.0, [], coverage))
       end)
 
       assert File.exists?(".check/.format_failed")
@@ -247,7 +247,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          catch_throw(CheckEscript.Summary.print(results, 1.0, tasks, coverage))
+          catch_throw(Check.Summary.print(results, 1.0, tasks, coverage))
         end)
 
       assert output =~ "warning(s) detected"
@@ -267,7 +267,7 @@ defmodule CheckEscript.IntegrationTest do
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
       capture_io(fn ->
-        catch_throw(CheckEscript.Summary.print(results, 1.0, [], coverage))
+        catch_throw(Check.Summary.print(results, 1.0, [], coverage))
       end)
 
       content = File.read!(".check/failed_tests.txt")
@@ -278,25 +278,25 @@ defmodule CheckEscript.IntegrationTest do
   describe "summary - pure functions" do
     test "extract_test_summary finds summary line" do
       output = "...\n\nFinished in 0.1s\n108 tests, 3 failures, 5 excluded"
-      assert CheckEscript.Summary.extract_test_summary(output) =~ "108 tests, 3 failures"
+      assert Check.Summary.extract_test_summary(output) =~ "108 tests, 3 failures"
     end
 
     test "extract_test_summary returns fallback for no match" do
-      assert CheckEscript.Summary.extract_test_summary("no summary") =~ "check_tests.txt"
+      assert Check.Summary.extract_test_summary("no summary") =~ "check_tests.txt"
     end
 
     test "colorize_line colors warnings yellow" do
-      result = CheckEscript.Summary.colorize_line("lib/foo.ex:10: warning: unused")
+      result = Check.Summary.colorize_line("lib/foo.ex:10: warning: unused")
       assert is_list(result)
     end
 
     test "colorize_line colors errors red" do
-      result = CheckEscript.Summary.colorize_line("** (CompileError) error: bad")
+      result = Check.Summary.colorize_line("** (CompileError) error: bad")
       assert is_list(result)
     end
 
     test "colorize_line returns plain string for normal lines" do
-      assert CheckEscript.Summary.colorize_line("normal line") == "normal line"
+      assert Check.Summary.colorize_line("normal line") == "normal line"
     end
   end
 
@@ -309,7 +309,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          catch_throw(CheckEscript.Watch.run())
+          catch_throw(Check.Watch.run())
         end)
 
       assert output =~ "No test partition files found"
@@ -322,7 +322,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(:stderr, fn ->
-          catch_throw(CheckEscript.Tasks.select(%{}, [only: "nonexistent"], 2, %{}))
+          catch_throw(Check.Tasks.select(%{}, [only: "nonexistent"], 2, %{}))
         end)
 
       assert output =~ "No valid checks specified"
@@ -333,7 +333,7 @@ defmodule CheckEscript.IntegrationTest do
     test "extract_file_paths" do
       output = "  ┃   lib/my_app/accounts.ex:45:5\n  ┃   lib/my_app/users.ex:12:3\n"
 
-      files = CheckEscript.Fix.extract_file_paths(output)
+      files = Check.Fix.extract_file_paths(output)
       assert "lib/my_app/accounts.ex" in files
       assert "lib/my_app/users.ex" in files
     end
@@ -345,7 +345,7 @@ defmodule CheckEscript.IntegrationTest do
 
       output =
         capture_io(fn ->
-          {results, _seconds} = CheckEscript.Runner.run_checks(tasks, nil, "", 10, false)
+          {results, _seconds} = Check.Runner.run_checks(tasks, nil, "", 10, false)
           send(self(), {:results, results})
         end)
 
@@ -358,7 +358,7 @@ defmodule CheckEscript.IntegrationTest do
 
       capture_io(fn ->
         capture_io(:stderr, fn ->
-          {results, _seconds} = CheckEscript.Runner.run_checks(tasks, nil, "", 10, false)
+          {results, _seconds} = Check.Runner.run_checks(tasks, nil, "", 10, false)
           send(self(), {:results, results})
         end)
       end)

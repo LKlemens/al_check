@@ -1,4 +1,4 @@
-defmodule CheckEscript.Coverage do
+defmodule Check.Coverage do
   @moduledoc "Coverage merging, caching, and threshold checking."
 
   @coverage_cache_path ".check/coverage_cache"
@@ -16,7 +16,7 @@ defmodule CheckEscript.Coverage do
         check(cached_output, "cover/", coverage)
 
       :miss ->
-        port = CheckEscript.Port.open("mix", ["test.coverage"])
+        port = Check.Port.open("mix", ["test.coverage"])
 
         output =
           if html do

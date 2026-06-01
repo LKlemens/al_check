@@ -11,13 +11,13 @@ defmodule AlCheck.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      test_coverage: [ignore_modules: [CheckEscript.Port]],
+      test_coverage: [ignore_modules: [Check.Port]],
       dialyzer: [
         plt_add_apps: [:mix],
         ignore_warnings: ".dialyzer_ignore.exs"
       ],
       escript: [
-        main_module: CheckEscript,
+        main_module: Check,
         path: "scripts/check"
       ],
       description: description(),

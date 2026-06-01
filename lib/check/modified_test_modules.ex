@@ -1,9 +1,9 @@
-defmodule CheckEscript.ModifiedTestModules do
+defmodule Check.ModifiedTestModules do
   @moduledoc "Runs whole test files that were added or modified on the current branch."
 
   def run(test_opts \\ %{}) do
     config = load_config()
-    base_branch = CheckEscript.Config.base_branch(config)
+    base_branch = Check.Config.base_branch(config)
     files = get_modified_test_files(base_branch)
 
     if Enum.empty?(files) do
@@ -23,8 +23,8 @@ defmodule CheckEscript.ModifiedTestModules do
         ])
       ])
 
-      port = CheckEscript.Port.open("mix", args)
-      status = CheckEscript.Runner.stream_port_output(port)
+      port = Check.Port.open("mix", args)
+      status = Check.Runner.stream_port_output(port)
       {status, ""}
     end
   end
@@ -36,7 +36,7 @@ defmodule CheckEscript.ModifiedTestModules do
   end
 
   defp load_config do
-    case CheckEscript.Config.load() do
+    case Check.Config.load() do
       {:ok, config} -> config
       _ -> %{}
     end

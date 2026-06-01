@@ -1,7 +1,7 @@
-defmodule CheckEscript.Runner do
+defmodule Check.Runner do
   @moduledoc "Parallel check execution, streaming, and port management."
 
-  alias CheckEscript.{Failed, Tasks, UI}
+  alias Check.{Failed, Tasks, UI}
 
   def run_checks(tasks, test_opts, test_cmd, max_concurrency, verbose) do
     print_header(tasks, test_cmd)
@@ -18,18 +18,18 @@ defmodule CheckEscript.Runner do
   end
 
   def stream_port_output(port) do
-    spinner = CheckEscript.Spinner.start()
+    spinner = Check.Spinner.start()
     status = do_stream_port_output(port, spinner)
-    CheckEscript.Spinner.stop(spinner)
+    Check.Spinner.stop(spinner)
     status
   end
 
   defp do_stream_port_output(port, spinner) do
     receive do
       {^port, {:data, data}} ->
-        CheckEscript.Spinner.stop(spinner)
+        Check.Spinner.stop(spinner)
         IO.binwrite(:stdio, data)
-        new_spinner = CheckEscript.Spinner.start()
+        new_spinner = Check.Spinner.start()
         do_stream_port_output(port, new_spinner)
 
       {^port, {:exit_status, status}} ->
@@ -43,12 +43,12 @@ defmodule CheckEscript.Runner do
   end
 
   def run_check(cmd, args, true) do
-    port = CheckEscript.Port.open(cmd, args)
+    port = Check.Port.open(cmd, args)
     collect_and_stream_output(port, "")
   end
 
-  defp run_builtin("modified_tests", opts), do: CheckEscript.ModifiedTests.run(opts)
-  defp run_builtin("modified_test_modules", opts), do: CheckEscript.ModifiedTestModules.run(opts)
+  defp run_builtin("modified_tests", opts), do: Check.ModifiedTests.run(opts)
+  defp run_builtin("modified_test_modules", opts), do: Check.ModifiedTestModules.run(opts)
 
   defp run_builtin(name, _opts) do
     IO.puts(:stderr, "Unknown builtin: #{name}")
@@ -159,7 +159,7 @@ defmodule CheckEscript.Runner do
     File.mkdir_p!(".check")
     file_handle = File.open!(".check/test_partition_#{partition}.txt", [:write, :utf8])
 
-    port = CheckEscript.Port.open(cmd, args)
+    port = Check.Port.open(cmd, args)
 
     {output, status} =
       collect_port_output(port, "", dot_counter_pid, partition, file_handle, verbose)

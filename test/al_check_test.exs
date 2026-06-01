@@ -11,41 +11,41 @@ defmodule AlCheckTest do
   end
 
   test "--version prints version" do
-    output = capture_io(fn -> CheckEscript.main(["--version"]) end)
+    output = capture_io(fn -> Check.main(["--version"]) end)
     assert output =~ "check #{Mix.Project.config()[:version]}"
   end
 
   test "-v prints version" do
-    output = capture_io(fn -> CheckEscript.main(["-v"]) end)
+    output = capture_io(fn -> Check.main(["-v"]) end)
     assert output =~ "check"
   end
 
   test "--help prints usage" do
-    output = capture_io(fn -> CheckEscript.main(["--help"]) end)
+    output = capture_io(fn -> Check.main(["--help"]) end)
     assert output =~ "Usage"
     assert output =~ "check --fast"
   end
 
   test "-h prints usage" do
-    output = capture_io(fn -> CheckEscript.main(["-h"]) end)
+    output = capture_io(fn -> Check.main(["-h"]) end)
     assert output =~ "Usage"
   end
 
   test "--init creates config" do
     # Already tested in config_test, just verify main routes correctly
-    output = capture_io(fn -> CheckEscript.main(["--init"]) end)
+    output = capture_io(fn -> Check.main(["--init"]) end)
     assert output =~ "already exists" or output =~ "Created"
   end
 
   test "--only format mock runs single check" do
-    output = capture_io(fn -> CheckEscript.main(["--only", "format", "mock"]) end)
+    output = capture_io(fn -> Check.main(["--only", "format", "mock"]) end)
     assert output =~ "All checks passed"
   end
 
   test "--dir with multiple dirs" do
     output =
       capture_io(fn ->
-        CheckEscript.main(["--only", "format", "--dir", "test/a,test/b", "mock"])
+        Check.main(["--only", "format", "--dir", "test/a,test/b", "mock"])
       end)
 
     assert output =~ "All checks passed"
@@ -54,7 +54,7 @@ defmodule AlCheckTest do
   test "--test-args accepts quoted string" do
     output =
       capture_io(fn ->
-        CheckEscript.main(["--test-args", "--exclude slow --cover", "--only", "format", "mock"])
+        Check.main(["--test-args", "--exclude slow --cover", "--only", "format", "mock"])
       end)
 
     assert output =~ "All checks passed"
@@ -66,7 +66,7 @@ defmodule AlCheckTest do
 
       output =
         capture_io(:stderr, fn ->
-          catch_throw(CheckEscript.main(["--repat"]))
+          catch_throw(Check.main(["--repat"]))
         end)
 
       assert output =~ "Unknown flag: --repat"
@@ -78,7 +78,7 @@ defmodule AlCheckTest do
 
       output =
         capture_io(:stderr, fn ->
-          catch_throw(CheckEscript.main(["--bogus"]))
+          catch_throw(Check.main(["--bogus"]))
         end)
 
       assert output =~ "Unknown flag: --bogus"
@@ -90,7 +90,7 @@ defmodule AlCheckTest do
 
       output =
         capture_io(:stderr, fn ->
-          catch_throw(CheckEscript.main(["--fastt"]))
+          catch_throw(Check.main(["--fastt"]))
         end)
 
       assert output =~ "Did you mean --fast?"
@@ -101,7 +101,7 @@ defmodule AlCheckTest do
 
       output =
         capture_io(:stderr, fn ->
-          catch_throw(CheckEscript.main(["--coverge"]))
+          catch_throw(Check.main(["--coverge"]))
         end)
 
       assert output =~ "Did you mean --coverage?"
@@ -119,7 +119,7 @@ defmodule AlCheckTest do
       File.cd!(tmp_dir)
 
       try do
-        output = capture_io(fn -> CheckEscript.main(["--version"]) end)
+        output = capture_io(fn -> Check.main(["--version"]) end)
 
         assert output =~ "outdated"
         assert output =~ "99.0.0"
@@ -139,7 +139,7 @@ defmodule AlCheckTest do
       File.cd!(tmp_dir)
 
       try do
-        output = capture_io(fn -> CheckEscript.main(["--version"]) end)
+        output = capture_io(fn -> Check.main(["--version"]) end)
         refute output =~ "outdated"
       after
         File.cd!(original_dir)
@@ -147,7 +147,7 @@ defmodule AlCheckTest do
     end
 
     test "no warning when no deps/al_check exists" do
-      output = capture_io(fn -> CheckEscript.main(["--version"]) end)
+      output = capture_io(fn -> Check.main(["--version"]) end)
       refute output =~ "outdated"
     end
   end

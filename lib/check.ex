@@ -1,4 +1,4 @@
-defmodule CheckEscript do
+defmodule Check do
   @moduledoc """
   Runs all code quality checks in parallel.
 
@@ -178,7 +178,7 @@ defmodule CheckEscript do
       check --only modified_tests
   """
 
-  alias CheckEscript.{Config, Coverage, Failed, Fix, Runner, Summary, Tasks, Watch}
+  alias Check.{Config, Coverage, Failed, Fix, Runner, Summary, Tasks, Watch}
 
   @version Mix.Project.config()[:version]
 

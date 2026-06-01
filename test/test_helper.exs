@@ -1,4 +1,4 @@
 ExUnit.start()
 Mimic.copy(System)
-Mimic.copy(CheckEscript.Port)
-Mimic.copy(CheckEscript.Config)
+Mimic.copy(Check.Port)
+Mimic.copy(Check.Config)

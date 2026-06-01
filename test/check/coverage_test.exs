@@ -1,10 +1,10 @@
-defmodule CheckEscript.CoverageTest do
+defmodule Check.CoverageTest do
   use ExUnit.Case, async: false
   use Mimic
 
   import ExUnit.CaptureIO
 
-  alias CheckEscript.Coverage
+  alias Check.Coverage
 
   setup :verify_on_exit!
 
@@ -195,7 +195,7 @@ defmodule CheckEscript.CoverageTest do
       File.rm(".check/coverage_cache.hash")
       File.rm(".check/coverage_cache.txt")
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test.coverage"] ->
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     75.00% | Total        |")
       end)
 
@@ -220,7 +220,7 @@ defmodule CheckEscript.CoverageTest do
       File.rm(".check/coverage_cache.hash")
       File.rm(".check/coverage_cache.txt")
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test.coverage"] ->
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     88.00% | Total        |\nGenerating HTML...")
       end)
 
@@ -242,7 +242,7 @@ defmodule CheckEscript.CoverageTest do
       File.rm(".check/coverage_cache.txt")
 
       # First call — cache miss, runs port
-      expect(CheckEscript.Port, :open, fn "mix", ["test.coverage"] ->
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     92.00% | Total        |")
       end)
 
@@ -273,7 +273,7 @@ defmodule CheckEscript.CoverageTest do
       File.rm(".check/coverage_cache.txt")
 
       # First call
-      expect(CheckEscript.Port, :open, fn "mix", ["test.coverage"] ->
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     70.00% | Total        |")
       end)
 
@@ -285,7 +285,7 @@ defmodule CheckEscript.CoverageTest do
       File.write!("cover/test.coverdata", "version2")
 
       # Second call — cache miss, new port call
-      expect(CheckEscript.Port, :open, fn "mix", ["test.coverage"] ->
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     80.00% | Total        |")
       end)
 
@@ -310,7 +310,7 @@ defmodule CheckEscript.CoverageTest do
       File.rm(".check/coverage_cache.hash")
       File.rm(".check/coverage_cache.txt")
 
-      expect(CheckEscript.Port, :open, fn "mix", ["test.coverage"] ->
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     50.00% | Total        |")
       end)
 

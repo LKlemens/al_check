@@ -16,11 +16,11 @@ defmodule Mix.Tasks.Check.Build do
   @spec run([String.t()]) :: :ok
   def run(_args) do
     check_path = get_check_path()
-    spinner = CheckEscript.Spinner.start("Building escript in #{check_path}")
+    spinner = Check.Spinner.start("Building escript in #{check_path}")
 
     case build_escript(check_path) do
       :ok ->
-        CheckEscript.Spinner.stop(spinner)
+        Check.Spinner.stop(spinner)
         escript_path = Path.join(check_path, "scripts/check")
         Mix.shell().info([IO.ANSI.format([:green, "✓ Built: #{escript_path}\n"])])
         Mix.shell().info("  Run directly:")
@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Check.Build do
         Mix.shell().info("    alias check='#{Path.expand(escript_path)}'\n")
 
       {:error, reason} ->
-        CheckEscript.Spinner.stop(spinner)
+        Check.Spinner.stop(spinner)
         Mix.raise("Failed to build escript: #{reason}")
     end
   end
