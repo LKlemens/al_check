@@ -26,9 +26,12 @@ defmodule Check do
       check --coverage                    # Show coverage report (cached if unchanged)
       check --no-coverage                 # Run without coverage (overrides .check.json)
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
+      check --setup-db                    # Run DB setup for each test partition
+      check --drop-db                     # Drop DB for each test partition
+      check --for-partitions 'mix ecto.reset'  # Run any command across partitions
   """
 
-  alias Check.{Config, Coverage, Failed, Fix, Runner, Summary, Tasks, Watch}
+  alias Check.{Config, Coverage, Failed, Fix, Partitions, Runner, Summary, Tasks, Watch}
 
   @version Mix.Project.config()[:version]
 
@@ -71,16 +74,54 @@ defmodule Check do
   end
 
   defp dispatch(opts, mock_mode, fix_mode, config) do
+    command = detect_command(opts, fix_mode)
+    run_command(command, opts, mock_mode, config)
+  end
+
+  @command_flags [
+    :version,
+    :init,
+    :help,
+    :watch,
+    :failed,
+    :coverage,
+    :setup_db,
+    :drop_db,
+    :for_partitions
+  ]
+
+  defp detect_command(opts, fix_mode) do
+    found = Enum.find(@command_flags, fn flag -> opts[flag] end)
+
     cond do
-      opts[:version] -> IO.puts("check #{@version}")
-      opts[:init] -> Config.init()
-      opts[:help] -> print_help()
-      opts[:watch] -> Watch.run()
-      opts[:failed] -> Failed.run(opts[:repeat])
-      opts[:coverage] -> run_coverage(config)
-      fix_mode -> Fix.run()
-      true -> run_checks(opts, mock_mode, config)
+      found in [:setup_db, :drop_db, :for_partitions] -> :partitions
+      found -> found
+      fix_mode -> :fix
+      true -> :checks
     end
+  end
+
+  defp run_command(:version, _opts, _mock, _config), do: IO.puts("check #{@version}")
+  defp run_command(:init, _opts, _mock, _config), do: Config.init()
+  defp run_command(:help, _opts, _mock, _config), do: print_help()
+  defp run_command(:watch, _opts, _mock, _config), do: Watch.run()
+  defp run_command(:failed, opts, _mock, _config), do: Failed.run(opts[:repeat])
+  defp run_command(:coverage, _opts, _mock, config), do: run_coverage(config)
+  defp run_command(:partitions, opts, _mock, config), do: run_partition_cmd(opts, config)
+  defp run_command(:fix, _opts, _mock, _config), do: Fix.run()
+  defp run_command(:checks, opts, mock, config), do: run_checks(opts, mock, config)
+
+  defp run_partition_cmd(opts, config) do
+    partitions = opts[:partitions] || config["partitions"] || 3
+
+    cmd =
+      cond do
+        opts[:setup_db] -> config["db_setup"] || "mix ecto.setup"
+        opts[:drop_db] -> config["db_drop"] || "mix ecto.drop"
+        opts[:for_partitions] -> opts[:for_partitions]
+      end
+
+    Partitions.run_for_all(cmd, partitions)
   end
 
   defp run_coverage(config) do
@@ -139,6 +180,7 @@ defmodule Check do
 
   defp parse_args(args) do
     {args, test_args} = extract_test_args(args)
+    {args, for_partitions} = extract_flag_with_value(args, "--for-partitions")
 
     {opts, remaining_args, invalid} =
       OptionParser.parse(args,
@@ -155,28 +197,33 @@ defmodule Check do
           help: :boolean,
           init: :boolean,
           version: :boolean,
-          coverage: :boolean
+          coverage: :boolean,
+          setup_db: :boolean,
+          drop_db: :boolean
         ],
         aliases: [h: :help, v: :version]
       )
 
     opts = if test_args, do: Keyword.put(opts, :test_args, test_args), else: opts
+    opts = if for_partitions, do: Keyword.put(opts, :for_partitions, for_partitions), else: opts
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
     {opts, mock_mode, fix_mode, invalid}
   end
 
-  # Extract --test-args and its value before OptionParser (value may start with --)
-  defp extract_test_args(args) do
-    case Enum.split_while(args, &(&1 != "--test-args")) do
-      {before, ["--test-args", value | rest]} -> {before ++ rest, value}
-      {before, ["--test-args"]} -> {before, nil}
+  # Extract a flag and its value before OptionParser (value may start with --)
+  defp extract_test_args(args), do: extract_flag_with_value(args, "--test-args")
+
+  defp extract_flag_with_value(args, flag) do
+    case Enum.split_while(args, &(&1 != flag)) do
+      {before, [^flag, value | rest]} -> {before ++ rest, value}
+      {before, [^flag]} -> {before, nil}
       {all, []} -> {all, nil}
     end
   end
 
   @allowed_invalid ~w(--repeat)
-  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help --init --version --coverage --no-coverage --test-args)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help --init --version --coverage --no-coverage --test-args --setup-db --drop-db --for-partitions)
 
   defp reject_invalid_flags(invalid) do
     unknown =

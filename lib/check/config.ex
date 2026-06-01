@@ -39,6 +39,8 @@ defmodule Check.Config do
                         %{"run" => "mix format"},
                         %{"run" => "mix recode", "files" => ".check/credo*.txt"}
                       ],
+                      "db_setup" => "mix ecto.setup",
+                      "db_drop" => "mix ecto.drop",
                       "coverage" => %{"mod" => "native", "limit" => 80, "html" => false},
                       "checks" => @default_checks
                     },
@@ -148,7 +150,7 @@ defmodule Check.Config do
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  @known_keys ~w(run fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix)
+  @known_keys ~w(run fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix db_setup db_drop)
   @known_coverage_keys ~w(mod limit html baseline_cmd)
   @known_check_keys ~w(name run)
 
