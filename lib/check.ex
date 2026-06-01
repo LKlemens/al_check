@@ -26,6 +26,7 @@ defmodule Check do
       check --coverage                    # Show coverage report (cached if unchanged)
       check --no-coverage                 # Run without coverage (overrides .check.json)
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
+      check --quiet                       # Disable spinner animation
       check --setup-db                    # Run DB setup for each test partition
       check --drop-db                     # Drop DB for each test partition
       check --for-partitions 'mix ecto.reset'  # Run any command across partitions
@@ -38,6 +39,8 @@ defmodule Check do
   @spec main([String.t()]) :: :ok
   def main(args) do
     {opts, mock_mode, fix_mode, invalid} = parse_args(args)
+
+    if opts[:quiet], do: Application.put_env(:al_check, :quiet, true)
 
     reject_invalid_flags(invalid)
 
@@ -198,6 +201,7 @@ defmodule Check do
           init: :boolean,
           version: :boolean,
           coverage: :boolean,
+          quiet: :boolean,
           setup_db: :boolean,
           drop_db: :boolean
         ],
@@ -223,7 +227,7 @@ defmodule Check do
   end
 
   @allowed_invalid ~w(--repeat)
-  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help --init --version --coverage --no-coverage --test-args --setup-db --drop-db --for-partitions)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --no-coverage --test-args --setup-db --drop-db --for-partitions)
 
   defp reject_invalid_flags(invalid) do
     unknown =
