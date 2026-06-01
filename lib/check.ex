@@ -109,7 +109,8 @@ defmodule Check do
     tasks = Tasks.select(all_tasks, opts, partitions, config)
 
     if Tasks.has_test_tasks?(tasks) do
-      Failed.save_test_args(test_args)
+      saved_args = if coverage.mod == :native, do: "#{test_args} --cover", else: test_args
+      Failed.save_test_args(saved_args)
       Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
     end
 
@@ -124,6 +125,8 @@ defmodule Check do
   end
 
   defp parse_args(args) do
+    {args, test_args} = extract_test_args(args)
+
     {opts, remaining_args, invalid} =
       OptionParser.parse(args,
         strict: [
@@ -139,18 +142,27 @@ defmodule Check do
           help: :boolean,
           init: :boolean,
           version: :boolean,
-          coverage: :boolean,
-          test_args: :string
+          coverage: :boolean
         ],
         aliases: [h: :help, v: :version]
       )
 
+    opts = if test_args, do: Keyword.put(opts, :test_args, test_args), else: opts
     mock_mode = "mock" in remaining_args
     fix_mode = opts[:fix] || false
     {opts, mock_mode, fix_mode, invalid}
   end
 
-  @allowed_invalid ~w(--repeat --test-args)
+  # Extract --test-args and its value before OptionParser (value may start with --)
+  defp extract_test_args(args) do
+    case Enum.split_while(args, &(&1 != "--test-args")) do
+      {before, ["--test-args", value | rest]} -> {before ++ rest, value}
+      {before, ["--test-args"]} -> {before, nil}
+      {all, []} -> {all, nil}
+    end
+  end
+
+  @allowed_invalid ~w(--repeat)
   @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help --init --version --coverage --test-args)
 
   defp reject_invalid_flags(invalid) do

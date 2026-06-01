@@ -366,4 +366,69 @@ defmodule Check.IntegrationTest do
       assert_received {:results, [{"Bad Builtin", 1, ""}]}
     end
   end
+
+  describe "coverage flag saved for --failed" do
+    test "saves --cover in test_args when coverage is native" do
+      output =
+        capture_io(fn ->
+          Check.main(["--only", "format", "--test-args", "--warnings-as-errors", "mock"])
+        end)
+
+      assert output =~ "All checks passed"
+
+      # Without coverage, test_args should not have --cover
+      saved = File.read!(".check/test_args.txt")
+      refute saved =~ "--cover"
+    end
+
+    test "--cover is added to saved args when coverage native config exists" do
+      # Simulate what run_checks does: save_test_args with --cover appended
+      Check.Failed.save_test_args("--warnings-as-errors --cover")
+
+      saved = File.read!(".check/test_args.txt")
+      assert saved =~ "--warnings-as-errors"
+      assert saved =~ "--cover"
+    end
+
+    test "--failed reads saved --cover and adds --export-coverage" do
+      File.mkdir_p!(".check")
+      File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
+      Check.Failed.save_test_args("--warnings-as-errors --cover")
+
+      expect(Check.Port, :open, fn "mix", args ->
+        assert "--cover" in args
+        assert "--export-coverage" in args
+        assert "failed" in args
+        assert "--warnings-as-errors" in args
+
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["ok"]
+        ])
+      end)
+
+      capture_io(fn -> Check.Failed.run(nil) end)
+    end
+
+    test "--failed without --cover does not add --export-coverage" do
+      File.mkdir_p!(".check")
+      File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
+      Check.Failed.save_test_args("--warnings-as-errors")
+
+      expect(Check.Port, :open, fn "mix", args ->
+        assert "--warnings-as-errors" in args
+        refute "--cover" in args
+        refute "--export-coverage" in args
+
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["ok"]
+        ])
+      end)
+
+      capture_io(fn -> Check.Failed.run(nil) end)
+    end
+  end
 end
