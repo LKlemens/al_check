@@ -167,16 +167,12 @@ defmodule Check.Coverage do
     hash_file = @coverage_cache_path <> ".hash"
     output_file = @coverage_cache_path <> ".txt"
 
-    if File.exists?(hash_file) and File.exists?(output_file) do
-      cached_hash = File.read!(hash_file) |> String.trim()
-
-      if cached_hash == current_hash do
-        {:ok, File.read!(output_file)}
-      else
-        :miss
-      end
+    with {:ok, cached_hash} <- File.read(hash_file),
+         true <- String.trim(cached_hash) == current_hash,
+         {:ok, output} <- File.read(output_file) do
+      {:ok, output}
     else
-      :miss
+      _ -> :miss
     end
   end
 
