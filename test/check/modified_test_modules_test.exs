@@ -85,13 +85,12 @@ defmodule Check.ModifiedTestModulesTest do
         {"fatal: error", 128}
       end)
 
-      output =
-        capture_io(fn ->
-          send(self(), ModifiedTestModules.run())
-        end)
+      capture_io(fn ->
+        send(self(), ModifiedTestModules.run())
+      end)
 
-      assert_received {0, ""}
-      assert output =~ "git diff failed"
+      assert_received {1, msg}
+      assert msg =~ "git diff failed"
     end
   end
 end

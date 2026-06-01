@@ -11,17 +11,20 @@ defmodule Check.ModifiedTests do
 
     case Check.Config.base_branch(config, warn: true, log: true) do
       nil ->
-        {1, ""}
+        {1, "Could not detect base branch. Set \"base_branch\" in .check.json"}
 
       base_branch ->
-        modified_files = get_modified_test_files(base_branch)
+        case get_modified_test_files(base_branch) do
+          {:error, msg} ->
+            {1, msg}
 
-        if Enum.empty?(modified_files) do
-          IO.puts("No modified test files on this branch")
-          {0, ""}
-        else
-          test_targets = Enum.flat_map(modified_files, &targets_for_file(&1, base_branch))
-          run_tests(test_targets, test_opts)
+          {:ok, []} ->
+            IO.puts("No modified test files on this branch")
+            {0, ""}
+
+          {:ok, modified_files} ->
+            test_targets = Enum.flat_map(modified_files, &targets_for_file(&1, base_branch))
+            run_tests(test_targets, test_opts)
         end
     end
   end
@@ -47,11 +50,12 @@ defmodule Check.ModifiedTests do
            stderr_to_stdout: true
          ) do
       {output, 0} ->
-        output |> String.split("\n", trim: true) |> Enum.filter(&File.exists?/1)
+        {:ok, output |> String.split("\n", trim: true) |> Enum.filter(&File.exists?/1)}
 
       {error, _} ->
-        IO.puts([IO.ANSI.format([:red, "git diff failed: #{String.trim(error)}"])])
-        []
+        msg = "git diff failed: #{String.trim(error)}"
+        IO.puts([IO.ANSI.format([:red, msg])])
+        {:error, msg}
     end
   end
 

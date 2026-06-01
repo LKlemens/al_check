@@ -6,7 +6,7 @@ defmodule Check.ModifiedTestModules do
 
     case Check.Config.base_branch(config, warn: true, log: true) do
       nil ->
-        {1, ""}
+        {1, "Could not detect base branch. Set \"base_branch\" in .check.json"}
 
       base_branch ->
         run_with_branch(base_branch, test_opts)
@@ -14,28 +14,31 @@ defmodule Check.ModifiedTestModules do
   end
 
   defp run_with_branch(base_branch, test_opts) do
-    files = get_modified_test_files(base_branch)
+    case get_modified_test_files(base_branch) do
+      {:error, msg} ->
+        {1, msg}
 
-    if Enum.empty?(files) do
-      IO.puts("No modified test files on this branch")
-      {0, ""}
-    else
-      args = ["test" | files] ++ extra_args(test_opts)
+      {:ok, []} ->
+        IO.puts("No modified test files on this branch")
+        {0, ""}
 
-      Enum.each(files, fn f -> IO.puts([IO.ANSI.format([:cyan, "  #{f}"])]) end)
+      {:ok, files} ->
+        args = ["test" | files] ++ extra_args(test_opts)
 
-      extra_str = Enum.join(extra_args(test_opts), " ")
+        Enum.each(files, fn f -> IO.puts([IO.ANSI.format([:cyan, "  #{f}"])]) end)
 
-      IO.puts([
-        IO.ANSI.format([
-          :cyan,
-          "\nTest command: mix test [#{length(files)} modules] #{extra_str}\n"
+        extra_str = Enum.join(extra_args(test_opts), " ")
+
+        IO.puts([
+          IO.ANSI.format([
+            :cyan,
+            "\nTest command: mix test [#{length(files)} modules] #{extra_str}\n"
+          ])
         ])
-      ])
 
-      port = Check.Port.open("mix", args)
-      status = Check.Runner.stream_port_output(port)
-      {status, ""}
+        port = Check.Port.open("mix", args)
+        status = Check.Runner.stream_port_output(port)
+        {status, ""}
     end
   end
 
@@ -66,11 +69,12 @@ defmodule Check.ModifiedTestModules do
            stderr_to_stdout: true
          ) do
       {output, 0} ->
-        output |> String.split("\n", trim: true) |> Enum.filter(&File.exists?/1)
+        {:ok, output |> String.split("\n", trim: true) |> Enum.filter(&File.exists?/1)}
 
       {error, _} ->
-        IO.puts([IO.ANSI.format([:red, "git diff failed: #{String.trim(error)}"])])
-        []
+        msg = "git diff failed: #{String.trim(error)}"
+        IO.puts([IO.ANSI.format([:red, msg])])
+        {:error, msg}
     end
   end
 end
