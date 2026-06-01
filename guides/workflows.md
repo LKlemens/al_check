@@ -54,7 +54,8 @@ check --only modified_tests --repeat 5  # Repeat modified tests
 Show coverage report (cached if `cover/` data hasn't changed):
 
 ```bash
-check --coverage
+check --coverage       # Show coverage report (cached if cover/ unchanged)
+check --no-coverage    # Run checks without coverage (overrides .check.json)
 ```
 
 Coverage is also merged automatically after partitioned test runs. Configure in `.check.json`:

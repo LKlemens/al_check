@@ -98,6 +98,8 @@ Use `{base_branch}` in shell commands - replaced at runtime with the configured 
 | `html` | Generate full HTML report (default: `false`, kills early after getting %) |
 | `baseline_cmd` | Shell command returning baseline coverage % for delta comparison |
 
+Use `--no-coverage` to disable coverage for a single run (overrides this config).
+
 Coverage results are cached based on `cover/*.coverdata` hashes. Re-running `check --coverage` is instant if test data hasn't changed.
 
 ## Fix commands

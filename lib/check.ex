@@ -24,6 +24,7 @@ defmodule Check do
       check --test-args '--exclude slow'   # Replace default --warnings-as-errors with custom args
       check --verbose                     # Print test output directly instead of partition status
       check --coverage                    # Show coverage report (cached if unchanged)
+      check --no-coverage                 # Run without coverage (overrides .check.json)
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
   """
 
@@ -102,7 +103,12 @@ defmodule Check do
     test_dir = parse_dirs(opts[:dir])
     test_args = opts[:test_args] || config["test_args"]
     repeat = opts[:repeat]
-    coverage = Config.parse_coverage(config["coverage"])
+
+    coverage =
+      if opts[:coverage] == false,
+        do: %{mod: false, limit: nil, html: false, baseline_cmd: nil},
+        else: Config.parse_coverage(config["coverage"])
+
     partitions = if mock_mode, do: partitions, else: Tasks.cap_partitions(partitions, test_dir)
 
     all_tasks = Tasks.define(mock_mode, partitions, test_dir, test_args, repeat, config, coverage)
@@ -170,7 +176,7 @@ defmodule Check do
   end
 
   @allowed_invalid ~w(--repeat)
-  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help --init --version --coverage --test-args)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --repeat --help --init --version --coverage --no-coverage --test-args)
 
   defp reject_invalid_flags(invalid) do
     unknown =

@@ -151,4 +151,27 @@ defmodule AlCheckTest do
       refute output =~ "outdated"
     end
   end
+
+  describe "--no-coverage" do
+    test "runs tests without coverage" do
+      output =
+        capture_io(fn ->
+          Check.main(["--only", "test", "--no-coverage", "--partitions", "1", "mock"])
+        end)
+
+      assert output =~ "All checks passed"
+      saved = File.read!(".check/test_args.txt")
+      refute saved =~ "--cover"
+    end
+
+    test "--no-coverage overrides config coverage" do
+      output =
+        capture_io(fn ->
+          Check.main(["--only", "test", "--no-coverage", "--partitions", "1", "mock"])
+        end)
+
+      assert output =~ "All checks passed"
+      refute output =~ "Merging coverage"
+    end
+  end
 end
