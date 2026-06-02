@@ -27,8 +27,8 @@ defmodule Check do
       check --no-coverage                 # Run without coverage (overrides .check.json)
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
       check --quiet                       # Disable spinner animation
-      check --setup-db                    # Run DB setup for each test partition
-      check --drop-db                     # Drop DB for each test partition
+      check --setup-db / --db-setup        # Run DB setup for each test partition
+      check --drop-db / --db-drop         # Drop DB for each test partition
       check --for-partitions 'mix ecto.reset'  # Run any command across partitions
   """
 
@@ -43,6 +43,8 @@ defmodule Check do
     if opts[:quiet], do: Application.put_env(:al_check, :quiet, true)
 
     reject_invalid_flags(invalid)
+    validate_positive(opts[:partitions], "--partitions")
+    validate_positive(opts[:repeat], "--repeat")
 
     config =
       case Config.load() do
@@ -89,7 +91,9 @@ defmodule Check do
     :failed,
     :coverage,
     :setup_db,
+    :db_setup,
     :drop_db,
+    :db_drop,
     :for_partitions
   ]
 
@@ -97,7 +101,7 @@ defmodule Check do
     found = Enum.find(@command_flags, fn flag -> opts[flag] end)
 
     cond do
-      found in [:setup_db, :drop_db, :for_partitions] -> :partitions
+      found in [:setup_db, :db_setup, :drop_db, :db_drop, :for_partitions] -> :partitions
       found -> found
       fix_mode -> :fix
       true -> :checks
@@ -116,15 +120,15 @@ defmodule Check do
 
   defp run_partition_cmd(opts, config) do
     partitions = opts[:partitions] || config["partitions"] || 3
+    Partitions.run_for_all(partition_cmd(opts, config), partitions)
+  end
 
-    cmd =
-      cond do
-        opts[:setup_db] -> config["db_setup"] || "mix ecto.setup"
-        opts[:drop_db] -> config["db_drop"] || "mix ecto.drop"
-        opts[:for_partitions] -> opts[:for_partitions]
-      end
-
-    Partitions.run_for_all(cmd, partitions)
+  defp partition_cmd(opts, config) do
+    cond do
+      opts[:setup_db] || opts[:db_setup] -> config["db_setup"] || "mix ecto.setup"
+      opts[:drop_db] || opts[:db_drop] -> config["db_drop"] || "mix ecto.drop"
+      opts[:for_partitions] -> opts[:for_partitions]
+    end
   end
 
   defp run_coverage(config) do
@@ -203,7 +207,9 @@ defmodule Check do
           coverage: :boolean,
           quiet: :boolean,
           setup_db: :boolean,
-          drop_db: :boolean
+          drop_db: :boolean,
+          db_setup: :boolean,
+          db_drop: :boolean
         ],
         aliases: [h: :help, v: :version]
       )
@@ -226,8 +232,16 @@ defmodule Check do
     end
   end
 
+  defp validate_positive(nil, _flag), do: :ok
+  defp validate_positive(n, _flag) when is_integer(n) and n > 0, do: :ok
+
+  defp validate_positive(n, flag) do
+    IO.puts(:stderr, "#{flag} must be greater than 0, got: #{n}")
+    System.halt(1)
+  end
+
   @allowed_invalid ~w(--repeat)
-  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --no-coverage --test-args --setup-db --drop-db --for-partitions)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --no-coverage --test-args --setup-db --db-setup --drop-db --db-drop --for-partitions)
 
   defp reject_invalid_flags(invalid) do
     unknown =

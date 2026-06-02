@@ -232,4 +232,48 @@ defmodule AlCheckTest do
       assert output =~ "All 1 partition(s) done"
     end
   end
+
+  describe "validation" do
+    test "--partitions 0 is rejected" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      output =
+        capture_io(:stderr, fn ->
+          catch_throw(Check.main(["--partitions", "0", "--only", "format", "mock"]))
+        end)
+
+      assert output =~ "--partitions must be greater than 0"
+    end
+
+    test "--partitions negative is rejected" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      output =
+        capture_io(:stderr, fn ->
+          catch_throw(Check.main(["--partitions", "-1", "--only", "format", "mock"]))
+        end)
+
+      assert output =~ "--partitions must be greater than 0"
+    end
+
+    test "--repeat 0 is rejected" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      output =
+        capture_io(:stderr, fn ->
+          catch_throw(Check.main(["--repeat", "0", "--only", "format", "mock"]))
+        end)
+
+      assert output =~ "--repeat must be greater than 0"
+    end
+
+    test "valid --partitions and --repeat are accepted" do
+      output =
+        capture_io(fn ->
+          Check.main(["--partitions", "1", "--only", "format", "mock"])
+        end)
+
+      assert output =~ "All checks passed"
+    end
+  end
 end
