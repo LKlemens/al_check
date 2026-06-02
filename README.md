@@ -60,6 +60,9 @@ check --only format,test # Run specific checks
 check --failed           # Re-run only failed tests
 check --fix              # Apply auto-fixes
 check --coverage         # Show coverage report
+check --setup-db         # Run DB setup for each test partition
+check --drop-db          # Drop DB for each test partition
+check --quiet            # Disable spinner animation
 check -v                 # Show version
 check --help             # Show all options
 ```
@@ -80,9 +83,9 @@ check --help             # Show all options
 
 ## Guides
 
-- **[Configuration](guides/configuration.md)** - `.check.json` reference, custom checks, coverage, fix commands
-- **[Test Partitioning](guides/test-partitioning.md)** - database setup, connection limits, scheduler tuning
-- **[Workflows](guides/workflows.md)** - failed tests, auto-fix, modified tests, coverage, watch mode
+- **[Configuration](guides/configuration.md)** - `.check.json` reference, custom checks, coverage, fix, db, update commands
+- **[Test Partitioning](guides/test-partitioning.md)** - database setup, connection limits, scheduler tuning, partition DB management
+- **[Workflows](guides/workflows.md)** - failed tests, auto-fix, modified tests, coverage, DB partitions, updating, watch mode
 
 ## Documentation
 

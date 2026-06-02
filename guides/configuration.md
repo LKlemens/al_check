@@ -49,6 +49,9 @@ All fields are optional. CLI flags override config values.
 | `checks` | Custom check definitions (replaces built-in checks, test partitions always added) |
 | `fix` | Commands to run with `--fix` |
 | `coverage` | Coverage merging settings |
+| `db_setup` | Command for `--setup-db` / `--db-setup` (default: `mix ecto.setup`) |
+| `db_drop` | Command for `--drop-db` / `--db-drop` (default: `mix ecto.drop`) |
+| `update` | Commands for `mix check.update` (default: `["mix deps.update al_check", "mix check.install"]`) |
 
 ## Custom checks
 

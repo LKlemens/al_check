@@ -60,3 +60,15 @@ AlCheck automatically caps partitions to the file count and warns:
 ```
 Not enough test files for 3 partitions (found 1), using 1
 ```
+
+## Managing partition databases
+
+Set up or drop databases for all partitions in parallel:
+
+```bash
+check --setup-db                  # mix ecto.setup for each partition
+check --drop-db                   # mix ecto.drop for each partition
+check --for-partitions 'mix ecto.reset'   # any command across partitions
+```
+
+See [Workflows](workflows.md) for details.

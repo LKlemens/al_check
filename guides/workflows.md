@@ -75,6 +75,49 @@ When `baseline_cmd` is set, shows delta vs baseline:
   Coverage: +2.3% vs baseline (83.2%)
 ```
 
+## Database Setup for Partitions
+
+Set up or drop databases for all test partitions in parallel:
+
+```bash
+check --setup-db                          # mix ecto.setup for each partition
+check --drop-db                           # mix ecto.drop for each partition
+check --setup-db --partitions 6           # with custom partition count
+check --for-partitions 'mix ecto.reset'   # any command across partitions
+check --for-partitions 'mix ecto.migrate' --partitions 4
+```
+
+`--db-setup` and `--db-drop` are also accepted as aliases.
+
+Commands are configurable in `.check.json`:
+
+```json
+"db_setup": "mix ecto.setup",
+"db_drop": "mix ecto.drop"
+```
+
+Each partition runs with `MIX_ENV=test MIX_TEST_PARTITION=N` prepended.
+
+## Updating AlCheck
+
+```bash
+mix check.update
+```
+
+Runs the commands defined in `"update"` in `.check.json`, or defaults to:
+1. `mix deps.update al_check`
+2. `mix check.install`
+
+Add your version manager's reshim command:
+
+```json
+"update": [
+  "mix deps.update al_check",
+  "mix check.install",
+  "asdf reshim"
+]
+```
+
 ## Watch Mode
 
 Monitor test partition output files in real-time while tests run in another terminal:
