@@ -76,7 +76,7 @@ check --help             # Show all options
 | `compile_test` | `MIX_ENV=test mix compile --warnings-as-errors` |
 | `dialyzer` | `mix dialyzer` |
 | `credo` | `mix credo --all` |
-| `credo_strict` | `mix credo --strict --only readability --all` |
+| `credo_strict` | `mix credo --strict --all` |
 | `test` | `mix test` (with parallel partitioning) |
 | `modified_tests` | Runs only changed test lines vs base branch (builtin) |
 | `modified_test_modules` | Runs whole modified test files vs base branch (builtin) |

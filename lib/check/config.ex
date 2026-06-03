@@ -12,7 +12,7 @@ defmodule Check.Config do
     "credo" => %{"name" => "Credo", "run" => "mix credo --all"},
     "credo_strict" => %{
       "name" => "Credo Strict",
-      "run" => "mix credo --strict --only readability --all"
+      "run" => "mix credo --strict --all"
     },
     "modified_tests" => %{
       "name" => "Modified Tests",
