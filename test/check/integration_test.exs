@@ -398,7 +398,7 @@ defmodule Check.IntegrationTest do
         ])
       end)
 
-      capture_io(fn -> Check.Failed.run(nil) end)
+      capture_io(fn -> Check.Failed.run([]) end)
     end
 
     test "--failed without --cover does not add --export-coverage" do
@@ -418,7 +418,7 @@ defmodule Check.IntegrationTest do
         ])
       end)
 
-      capture_io(fn -> Check.Failed.run(nil) end)
+      capture_io(fn -> Check.Failed.run([]) end)
     end
   end
 end

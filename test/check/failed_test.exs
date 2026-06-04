@@ -149,7 +149,7 @@ defmodule Check.FailedTest do
       try do
         output =
           ExUnit.CaptureIO.capture_io(fn ->
-            assert catch_throw(Failed.run(nil)) == {:halted, 1}
+            assert catch_throw(Failed.run([])) == {:halted, 1}
           end)
 
         assert output =~ "No failed tests found"
@@ -165,7 +165,7 @@ defmodule Check.FailedTest do
 
       output =
         ExUnit.CaptureIO.capture_io(fn ->
-          Failed.run(nil)
+          Failed.run([])
         end)
 
       assert output =~ "No failed tests to run"
@@ -189,7 +189,7 @@ defmodule Check.FailedTest do
 
       output =
         ExUnit.CaptureIO.capture_io(fn ->
-          Failed.run(nil)
+          Failed.run([])
         end)
 
       assert output =~ "Running 1 failed test(s)"
@@ -212,7 +212,7 @@ defmodule Check.FailedTest do
 
       output =
         ExUnit.CaptureIO.capture_io(fn ->
-          catch_throw(Failed.run(nil))
+          catch_throw(Failed.run([]))
         end)
 
       assert output =~ "Running 1 failed test(s)"
@@ -236,7 +236,7 @@ defmodule Check.FailedTest do
       end)
 
       ExUnit.CaptureIO.capture_io(fn ->
-        Failed.run(5)
+        Failed.run(repeat: 5)
       end)
     end
 
@@ -258,8 +258,118 @@ defmodule Check.FailedTest do
       end)
 
       ExUnit.CaptureIO.capture_io(fn ->
-        Failed.run(nil)
+        Failed.run([])
       end)
+    end
+  end
+
+  describe "still_failing.txt" do
+    test "on success deletes still_failing.txt" do
+      File.mkdir_p!(".check")
+      File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
+      File.write!(".check/still_failing.txt", "test/foo_test.exs:10")
+      Failed.save_test_args("--warnings-as-errors")
+
+      expect(Check.Port, :open, fn "mix", _args ->
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["ok"]
+        ])
+      end)
+
+      ExUnit.CaptureIO.capture_io(fn -> Failed.run(failed: true) end)
+
+      refute File.exists?(".check/still_failing.txt")
+    end
+
+    test "on failure writes still_failing.txt" do
+      stub_halt()
+      File.mkdir_p!(".check")
+      File.write!(".check/failed_tests.txt", "test/a.exs:1\ntest/b.exs:2")
+      File.rm(".check/still_failing.txt")
+      Failed.save_test_args("--warnings-as-errors")
+
+      # simulate output where only test/a.exs:1 fails
+      test_output =
+        "  1) test something (MyTest)\n     test/a.exs:1\n     Assertion failed\n"
+
+      expect(Check.Port, :open, fn "mix", _args ->
+        Port.open({:spawn_executable, System.find_executable("sh")}, [
+          :binary,
+          :exit_status,
+          args: ["-c", "printf '#{test_output}' && exit 1"]
+        ])
+      end)
+
+      ExUnit.CaptureIO.capture_io(fn ->
+        catch_throw(Failed.run(failed: true))
+      end)
+
+      assert File.exists?(".check/still_failing.txt")
+      content = File.read!(".check/still_failing.txt")
+      assert content =~ "test/a.exs:1"
+    end
+
+    test "--failed reads from still_failing.txt when it exists" do
+      File.mkdir_p!(".check")
+      File.write!(".check/failed_tests.txt", "test/a.exs:1\ntest/b.exs:2")
+      File.write!(".check/still_failing.txt", "test/a.exs:1")
+      Failed.save_test_args("--warnings-as-errors")
+
+      expect(Check.Port, :open, fn "mix", args ->
+        # should only have test/a.exs:1 from still_failing, not test/b.exs:2
+        assert "test/a.exs:1" in args
+        refute "test/b.exs:2" in args
+
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["ok"]
+        ])
+      end)
+
+      ExUnit.CaptureIO.capture_io(fn -> Failed.run(failed: true) end)
+    end
+
+    test "--all-failed reads from failed_tests.txt" do
+      File.mkdir_p!(".check")
+      File.write!(".check/failed_tests.txt", "test/a.exs:1\ntest/b.exs:2")
+      File.write!(".check/still_failing.txt", "test/a.exs:1")
+      Failed.save_test_args("--warnings-as-errors")
+
+      expect(Check.Port, :open, fn "mix", args ->
+        # should have both from failed_tests.txt
+        assert "test/a.exs:1" in args
+        assert "test/b.exs:2" in args
+
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["ok"]
+        ])
+      end)
+
+      ExUnit.CaptureIO.capture_io(fn -> Failed.run(all_failed: true) end)
+    end
+
+    test "--failed falls back to failed_tests.txt when no still_failing" do
+      File.mkdir_p!(".check")
+      File.write!(".check/failed_tests.txt", "test/a.exs:1")
+      File.rm(".check/still_failing.txt")
+      Failed.save_test_args("--warnings-as-errors")
+
+      expect(Check.Port, :open, fn "mix", args ->
+        assert "test/a.exs:1" in args
+
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["ok"]
+        ])
+      end)
+
+      ExUnit.CaptureIO.capture_io(fn -> Failed.run(failed: true) end)
     end
   end
 end
