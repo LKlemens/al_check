@@ -84,6 +84,7 @@ defmodule Mix.Tasks.Check.Install do
     Mix.shell().info("    check --fast       # Run fast checks only")
     Mix.shell().info("    check --only test  # Run specific checks")
     Mix.shell().info("    check --init       # Create .check.json")
+    Mix.shell().info("    check --help       # Show all options")
     Mix.shell().info("    check -v           # Show version\n")
   end
 
