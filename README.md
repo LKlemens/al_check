@@ -9,7 +9,7 @@
 
 A parallel code quality checker for Elixir projects. Runs format, compile, credo, dialyzer, and tests concurrently with smart test partitioning.
 
-> Check out how it works in the [live showcase](https://al-check-demo.fly.dev/apps/al-check-demo)
+> Check out how it works in the [showcase](https://al-check-demo.fly.dev/apps/al-check-demo)
 
 ## Features
 
