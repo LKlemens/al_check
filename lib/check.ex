@@ -19,7 +19,8 @@ defmodule Check do
       check --dir test/dir                 # Run tests only from specific directory
       check --dir test/foo,test/bar        # Run tests from multiple directories
       check --fix                          # Apply fixes from stored credo output
-      check --failed                       # Re-run only failed tests from previous run
+      check --failed                       # Re-run still-failing tests (updates .check/still_failing.txt)
+      check --all-failed                   # Re-run all originally failed tests
       check --watch                        # Monitor test partition files in real-time
       check --test-args '--exclude slow'   # Replace default --warnings-as-errors with custom args
       check --verbose                     # Print test output directly instead of partition status
@@ -89,6 +90,7 @@ defmodule Check do
     :help,
     :watch,
     :failed,
+    :all_failed,
     :coverage,
     :setup_db,
     :db_setup,
@@ -101,6 +103,7 @@ defmodule Check do
     found = Enum.find(@command_flags, fn flag -> opts[flag] end)
 
     cond do
+      found == :all_failed -> :failed
       found in [:setup_db, :db_setup, :drop_db, :db_drop, :for_partitions] -> :partitions
       found -> found
       fix_mode -> :fix
@@ -112,7 +115,7 @@ defmodule Check do
   defp run_command(:init, _opts, _mock, _config), do: Config.init()
   defp run_command(:help, _opts, _mock, _config), do: print_help()
   defp run_command(:watch, _opts, _mock, _config), do: Watch.run()
-  defp run_command(:failed, opts, _mock, _config), do: Failed.run(opts[:repeat])
+  defp run_command(:failed, opts, _mock, _config), do: Failed.run(opts)
   defp run_command(:coverage, _opts, _mock, config), do: run_coverage(config)
   defp run_command(:partitions, opts, _mock, config), do: run_partition_cmd(opts, config)
   defp run_command(:fix, _opts, _mock, _config), do: Fix.run()
@@ -197,6 +200,7 @@ defmodule Check do
           fast: :boolean,
           partitions: :integer,
           failed: :boolean,
+          all_failed: :boolean,
           dir: :string,
           watch: :boolean,
           verbose: :boolean,
@@ -241,7 +245,7 @@ defmodule Check do
   end
 
   @allowed_invalid ~w(--repeat)
-  @valid_flags ~w(--only --fix --fast --partitions --failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --no-coverage --test-args --setup-db --db-setup --drop-db --db-drop --for-partitions)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --all-failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --no-coverage --test-args --setup-db --db-setup --drop-db --db-drop --for-partitions)
 
   defp reject_invalid_flags(invalid) do
     unknown =

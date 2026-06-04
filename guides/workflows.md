@@ -5,13 +5,20 @@
 When tests fail, failed test locations are automatically saved. Re-run only the failures:
 
 ```bash
-check --only test     # Run tests, failures saved automatically
-check --failed        # Re-run only the failed tests
+check --only test     # Run tests, failures saved to .check/failed_tests.txt
+check --failed        # Re-run still-failing tests
+check --all-failed    # Re-run all originally failed tests
 check --failed --repeat 10  # Re-run with repeat
 ```
 
-Failed tests are saved to `.check/failed_tests.txt`. Failures are extracted from both
-test partition outputs and any custom check output (e.g. `modified_tests`).
+AlCheck maintains two files:
+- `.check/failed_tests.txt` — original full list from the last check run (never modified by `--failed`)
+- `.check/still_failing.txt` — updated after each `--failed` run, contains only tests that still fail
+
+`--failed` reads from `still_failing.txt` (falls back to `failed_tests.txt` if it doesn't exist).
+As tests pass, they are removed from the still-failing list. When all pass, `still_failing.txt` is deleted.
+
+`--all-failed` always reads from `failed_tests.txt` to re-run the full original list.
 
 ## Auto-fix Workflow
 

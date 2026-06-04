@@ -57,7 +57,8 @@ check                    # Run default checks
 check --init             # Create .check.json with defaults
 check --fast             # Run only fast checks (format, compile, credo)
 check --only format,test # Run specific checks
-check --failed           # Re-run only failed tests
+check --failed           # Re-run still-failing tests
+check --all-failed       # Re-run all originally failed tests
 check --fix              # Apply auto-fixes
 check --coverage         # Show coverage report
 check --setup-db         # Run DB setup for each test partition

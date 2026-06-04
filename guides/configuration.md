@@ -128,6 +128,7 @@ AlCheck creates a `.check/` directory:
 | `.check/credo_strict.txt` | Strict credo output for auto-fix |
 | `.check/check_tests.txt` | Merged test output from all partitions |
 | `.check/test_partition_N.txt` | Individual partition outputs |
-| `.check/failed_tests.txt` | Failed test locations |
+| `.check/failed_tests.txt` | Original failed test locations (from last check run) |
+| `.check/still_failing.txt` | Tests still failing after `--failed` runs |
 | `.check/coverage_cache.*` | Cached coverage results |
 | `.check/test_args.txt` | Saved test args for `--failed` |
