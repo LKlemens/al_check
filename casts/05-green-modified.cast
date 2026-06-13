@@ -1,0 +1,10 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1781354313,"command":"bash -lc 'stty rows 30 cols 90; check --only modified_tests --repeat 10'","env":{"SHELL":"/bin/zsh"}}
+[0.244, "o", "Running code quality checks in parallel...\r\n\r\n"]
+[0.000, "o", "Available schedulers: 10\r\n\r\n"]
+[0.003, "o", "  • Modified Tests            [RUNNING]\r\n"]
+[0.054, "o", "\u001b[s\u001b[1A\u001b[2K\u001b[32m  ✓ Modified Tests            [OK]\r\n\u001b[0m\u001b[u"]
+[0.003, "o", "\u001b[90m  Note: only committed changes vs main are considered; uncommitted/working-tree changes are ignored\u001b[0m\r\n\u001b[33mWarning: no modified test files found on this branch\u001b[0m\r\n"]
+[0.002, "o", "\r\n"]
+[0.003, "o", "\r\nCompleted in 0.1s\r\n"]
+[0.000, "o", "\u001b[32m\r\n✓ All checks passed!\u001b[0m\r\n"]
+[0.006, "x", "0"]

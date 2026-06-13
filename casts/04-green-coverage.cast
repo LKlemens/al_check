@@ -1,0 +1,12 @@
+{"version":3,"term":{"cols":80,"rows":24},"timestamp":1781354313,"command":"bash -lc 'stty rows 30 cols 90; check --coverage'","env":{"SHELL":"/bin/zsh"}}
+[0.241, "o", "\u001b[36m\r\nMerging coverage data...\u001b[0m\r\n"]
+[0.011, "o", "\u001b[36m(cached)\u001b[0m\r\n"]
+[0.001, "o", "\u001b[32m✓ Coverage: 96.08% | Report: cover/\u001b[0m\r\n"]
+[0.020, "o", "\u001b[32m  Coverage: +2.08% vs baseline (94.0%)\u001b[0m\r\n"]
+[0.080, "o", "\u001b[33m\r\nCoverage of modified files:\u001b[0m\r\n"]
+[0.001, "o", "|     85.71% | AlCheckDemo.Parser     |\r\n"]
+[0.000, "o", "|    100.00% | AlCheckDemo.Lists      |\r\n"]
+[0.000, "o", "|    100.00% | AlCheckDemo.Strings    |\r\n"]
+[0.000, "o", "|    100.00% | AlCheckDemo.Validator  |\r\n"]
+[0.000, "o", "\u001b[33m  Average: 96.43%\u001b[0m\r\n"]
+[0.005, "x", "0"]
