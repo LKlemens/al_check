@@ -230,8 +230,6 @@ defmodule Check.Coverage do
     end
   end
 
-  defp avg_percentage([]), do: nil
-
   defp avg_percentage(lines) do
     percentages =
       lines
@@ -252,7 +250,9 @@ defmodule Check.Coverage do
 
   defp parse_number(str) do
     case Float.parse(str) do
-      {num, _} -> num
+      {num, _} ->
+        num
+
       :error ->
         case Integer.parse(str) do
           {num, _} -> num * 1.0
@@ -306,7 +306,14 @@ defmodule Check.Coverage do
     # `lib/**/*.ex` pathspec silently matches nothing for top-level files.
     case System.cmd(
            "git",
-           ["diff", "--name-only", "--diff-filter=#{filter}", revision, "--", ":(glob)lib/**/*.ex"],
+           [
+             "diff",
+             "--name-only",
+             "--diff-filter=#{filter}",
+             revision,
+             "--",
+             ":(glob)lib/**/*.ex"
+           ],
            stderr_to_stdout: true
          ) do
       {output, 0} -> String.split(output, "\n", trim: true)
