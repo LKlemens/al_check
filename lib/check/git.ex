@@ -47,4 +47,20 @@ defmodule Check.Git do
       System.cmd("git", ["rev-parse", "--verify", "--quiet", "HEAD~1"], stderr_to_stdout: true)
     )
   end
+
+  @doc """
+  Returns the short SHA of HEAD, or `nil` if it cannot be resolved.
+
+  ## Examples
+
+      iex> is_binary(Check.Git.head_sha())
+      true
+  """
+  @spec head_sha() :: String.t() | nil
+  def head_sha do
+    case System.cmd("git", ["rev-parse", "--short", "HEAD"], stderr_to_stdout: true) do
+      {output, 0} -> String.trim(output)
+      _ -> nil
+    end
+  end
 end
