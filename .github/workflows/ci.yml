@@ -48,6 +48,15 @@ jobs:
     - name: Compile
       run: mix compile --warnings-as-errors
 
+    - name: Build check escript
+      run: mix escript.build
+
+    - name: Upload check escript
+      uses: actions/upload-artifact@v4
+      with:
+        name: check-escript
+        path: scripts/check
+
   all_tests:
     timeout-minutes: 10
     name: All tests
@@ -107,11 +116,20 @@ jobs:
     - name: Compile
       run: mix compile
 
+    - name: Download check escript
+      uses: actions/download-artifact@v4
+      with:
+        name: check-escript
+        path: scripts
+
+    - name: Make check executable
+      run: chmod +x scripts/check
+
     - name: Run tests
-      run: |
-        #  fail if any command in a pipeline fails
-        set -o pipefail
-        mix test --cover --warnings-as-errors | tee raport
+      run: ./scripts/check --only test --partitions 3 --quiet --verbose
+
+    - name: Generate coverage report
+      run: ./scripts/check --full-coverage-output > raport
 
     - name: Prepare comment with coverage percentages
       run: |
@@ -246,14 +264,17 @@ jobs:
         mix deps.get
         mix deps.compile
 
-    - name: Check Formatting
-      run: mix format --check-formatted
+    - name: Download check escript
+      uses: actions/download-artifact@v4
+      with:
+        name: check-escript
+        path: scripts
 
-    - name: Credo
-      run: mix credo --strict
+    - name: Make check executable
+      run: chmod +x scripts/check
 
-    - name: Sobelow
-      run: mix sobelow --config
+    - name: Static code analysis
+      run: ./scripts/check --only format,credo_strict,sobelow
 
   dialyzer:
     name: Dialyzer
@@ -296,5 +317,14 @@ jobs:
         mkdir -p priv/plts
         mix dialyzer --plt
 
+    - name: Download check escript
+      uses: actions/download-artifact@v4
+      with:
+        name: check-escript
+        path: scripts
+
+    - name: Make check executable
+      run: chmod +x scripts/check
+
     - name: Run Dialyzer
-      run: mix dialyzer
+      run: ./scripts/check --only dialyzer
