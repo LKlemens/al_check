@@ -230,8 +230,6 @@ defmodule Check.Coverage do
     end
   end
 
-  defp avg_percentage([]), do: nil
-
   defp avg_percentage(lines) do
     percentages =
       lines
