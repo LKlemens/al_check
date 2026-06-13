@@ -62,7 +62,9 @@ defmodule Check.ModifiedTestModulesTest do
     end
 
     @tag :tmp_dir
-    test "on the base branch, diffs against the latest commit not an empty range", %{tmp_dir: tmp_dir} do
+    test "on the base branch, diffs against the latest commit not an empty range", %{
+      tmp_dir: tmp_dir
+    } do
       file = Path.join(tmp_dir, "my_test.exs")
       File.write!(file, "defmodule MyTest do\nend\n")
 
