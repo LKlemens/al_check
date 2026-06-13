@@ -1,13 +1,4 @@
-# AlCheck Demo Tour
-
-A static, GitHub-renderable mirror of the
-[`demo.livemd`](demo.livemd) Livebook tour. Every scenario plays back as
-a GIF so you can browse without spinning Livebook up.
-
-The library is deliberately **red on a fresh clone** — one planted defect
-per check category, each tagged `# DEMO:` in the source. The tour starts
-on a temporarily-clean snapshot so the green scenarios pass; scenario 3
-restores the defects.
+# AlCheck Tour
 
 ## 1. ✅ Full run — everything green
 
