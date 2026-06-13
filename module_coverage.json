@@ -1,0 +1,21 @@
+{
+  "Check.Git": 60.0,
+  "Mix.Tasks.Check.Install": 73.81,
+  "Check": 84.07,
+  "Check.ModifiedTests": 85.53,
+  "Check.PRComment": 85.71,
+  "Check.Spinner": 86.67,
+  "Check.Config": 87.5,
+  "Check.Coverage": 89.21,
+  "Check.ModifiedTestModules": 91.89,
+  "Check.Summary": 92.77,
+  "Mix.Tasks.Check.Update": 93.75,
+  "Mix.Tasks.Check.Build": 94.44,
+  "Check.Fix": 96.15,
+  "Check.Tasks": 96.51,
+  "Check.Runner": 97.17,
+  "Check.Failed": 98.41,
+  "Check.Partitions": 100.0,
+  "Check.UI": 100.0,
+  "Check.Watch": 100.0
+}
