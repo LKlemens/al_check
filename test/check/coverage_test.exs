@@ -248,7 +248,13 @@ defmodule Check.CoverageTest do
         capture_io(fn ->
           send(
             self(),
-            Coverage.merge(%{mod: :native, full: true, limit: nil, html: false, baseline_cmd: nil})
+            Coverage.merge(%{
+              mod: :native,
+              full: true,
+              limit: nil,
+              html: false,
+              baseline_cmd: nil
+            })
           )
         end)
 
@@ -268,7 +274,13 @@ defmodule Check.CoverageTest do
         capture_io(fn ->
           send(
             self(),
-            Coverage.merge(%{mod: :native, full: false, limit: nil, html: false, baseline_cmd: nil})
+            Coverage.merge(%{
+              mod: :native,
+              full: false,
+              limit: nil,
+              html: false,
+              baseline_cmd: nil
+            })
           )
         end)
 
