@@ -25,7 +25,7 @@ defmodule Check.Config do
   }
 
   @default_run ["format", "compile", "compile_test", "dialyzer", "credo", "credo_strict", "test"]
-  @default_fast ["format", "compile", "compile_test", "credo", "credo_strict"]
+  @default_fast ["format", "compile", "compile_test", "credo", "credo_strict", "modified_test_modules"]
 
   @default_config Jason.encode!(
                     %{
