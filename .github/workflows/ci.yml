@@ -187,7 +187,7 @@ jobs:
           __Coverage:__ ${{ env.COVERAGE }}: ${{ env.MSG }}
           ${{ env.LAST_LINE }}
 
-          ### Modified modules coverage
+          ### Modules related to this PR - coverage
           ${{ env.MODULE_DIFF }}
         edit-mode: replace
 
