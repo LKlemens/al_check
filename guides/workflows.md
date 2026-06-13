@@ -56,6 +56,10 @@ check --only modified_tests --repeat 5  # Repeat modified tests
 
 `modified_test_modules` is simpler - runs the entire file for any changed test module.
 
+Detection compares committed changes against the base branch; uncommitted
+working-tree changes are ignored. When run on the base branch itself, it
+compares against the latest commit (`HEAD~1...HEAD`).
+
 ## Coverage Workflow
 
 Show coverage report (cached if `cover/` data hasn't changed):
@@ -76,11 +80,20 @@ Coverage is also merged automatically after partitioned test runs. Configure in 
 }
 ```
 
-When `baseline_cmd` is set, shows delta vs baseline:
+The summary line prints a clickable `file://` link to the HTML report. When
+`baseline_cmd` is set, it also shows the delta vs baseline:
 ```
-✓ Coverage: 85.5% | Report: cover/
+✓ Coverage: 85.5% | file:///path/to/project/cover/index.html
   Coverage: +2.3% vs baseline (83.2%)
 ```
+
+### New/modified file breakdown
+
+After a full run (and with `check --coverage`), coverage for files added or
+modified vs the base branch is reported separately, grouped into "new files"
+and "modified files" with per-group averages. The per-module HTML reports for
+those files are copied into `.check/cover_modified/` and a `file://` link to
+that directory is printed, so you can open just the changed files' coverage.
 
 ## Database Setup for Partitions
 
