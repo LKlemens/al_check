@@ -14,15 +14,8 @@ In `config/runtime.exs`, use `MIX_TEST_PARTITION` to create per-partition databa
 ```elixir
 # config/runtime.exs
 partition = System.get_env("MIX_TEST_PARTITION", "")
-
-test_database_url =
-  System.get_env("TEST_DATABASE_URL")
-  |> URI.parse()
-  |> then(fn uri ->
-    db_name = String.trim_leading(uri.path || "", "/")
-    Map.put(uri, :path, "/#{db_name}#{partition}")
-  end)
-  |> URI.to_string()
+test_database_url = System.get_env("TEST_DATABASE_URL")
+test_database_url = test_database_url <> partition
 
 config :my_app, MyApp.Repo, url: test_database_url
 ```
@@ -72,3 +65,7 @@ check --for-partitions 'mix ecto.reset'   # any command across partitions
 ```
 
 See [Workflows](workflows.md) for details.
+
+## Further reading
+
+- [Running tests in partitions](https://klemens.blog/blog/tests-in-partitions/) — background behind this approach.
