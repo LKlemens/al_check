@@ -8,6 +8,22 @@ defmodule Check.IntegrationTest do
 
   setup :verify_on_exit!
 
+  setup do
+    fs = start_supervised!({Agent, fn -> %{} end})
+    stub(File, :mkdir_p!, fn _ -> :ok end)
+    stub(File, :write!, fn path, content -> Agent.update(fs, &Map.put(&1, path, content)); :ok end)
+    stub(File, :read!, fn path -> Agent.get(fs, &Map.fetch!(&1, path)) end)
+    stub(File, :read, fn path ->
+      case Agent.get(fs, &Map.get(&1, path)) do
+        nil -> {:error, :enoent}
+        content -> {:ok, content}
+      end
+    end)
+    stub(File, :exists?, fn path -> Agent.get(fs, &Map.has_key?(&1, path)) end)
+    stub(File, :rm, fn path -> Agent.update(fs, &Map.delete(&1, path)); :ok end)
+    :ok
+  end
+
   defp stub_halt do
     stub(System, :halt, fn code -> throw({:halted, code}) end)
   end
@@ -173,7 +189,6 @@ defmodule Check.IntegrationTest do
     end
 
     test "removes format failure marker on success" do
-      File.mkdir_p!(".check")
       File.write!(".check/.format_failed", "")
 
       results = [{"Formatting", 0, "ok"}]
@@ -225,7 +240,6 @@ defmodule Check.IntegrationTest do
 
     test "saves format failure marker on failure" do
       stub_halt()
-      File.rm(".check/.format_failed")
 
       results = [{"Formatting", 1, "not formatted"}]
       coverage = %{mod: false, limit: nil, html: false, baseline_cmd: nil}
@@ -303,9 +317,7 @@ defmodule Check.IntegrationTest do
   describe "watch - early exit" do
     test "halts when no partition files exist" do
       stub_halt()
-
-      # ensure no partition files
-      Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
+      stub(Path, :wildcard, fn ".check/test_partition_*.txt" -> [] end)
 
       output =
         capture_io(fn ->
@@ -395,7 +407,6 @@ defmodule Check.IntegrationTest do
     end
 
     test "--failed reads saved --cover and adds --export-coverage" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Check.Failed.save_test_args("--warnings-as-errors --cover")
 
@@ -416,7 +427,6 @@ defmodule Check.IntegrationTest do
     end
 
     test "--failed without --cover does not add --export-coverage" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Check.Failed.save_test_args("--warnings-as-errors")
 

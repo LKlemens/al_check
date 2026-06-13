@@ -1,5 +1,5 @@
 defmodule Check.CoverageTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Mimic
 
   import ExUnit.CaptureIO
@@ -15,6 +15,36 @@ defmodule Check.CoverageTest do
       :stderr_to_stdout,
       args: ["-c", "echo '#{text}'"]
     ])
+  end
+
+  # Stubs for native merge tests — one fake coverdata file, no cache on disk.
+  defp stub_coverdata(content \\ "fake") do
+    stub(Path, :wildcard, fn "cover/*.coverdata" -> ["cover/fake.coverdata"] end)
+    stub(File, :read!, fn "cover/fake.coverdata" -> content end)
+    stub(File, :read, fn _path -> {:error, :enoent} end)
+    stub(File, :write!, fn _path, _content -> :ok end)
+    stub(File, :mkdir_p!, fn _path -> :ok end)
+  end
+
+  # In-memory filesystem backed by an Agent — captures writes and serves them
+  # back on reads. Used for tests that verify caching behaviour.
+  defp start_mem_fs do
+    fs = start_supervised!({Agent, fn -> %{} end})
+
+    stub(File, :write!, fn path, content ->
+      Agent.update(fs, &Map.put(&1, path, content))
+      :ok
+    end)
+
+    stub(File, :read, fn path ->
+      case Agent.get(fs, &Map.get(&1, path)) do
+        nil -> {:error, :enoent}
+        content -> {:ok, content}
+      end
+    end)
+
+    stub(File, :mkdir_p!, fn _path -> :ok end)
+    fs
   end
 
   describe "check/3" do
@@ -188,12 +218,7 @@ defmodule Check.CoverageTest do
     end
 
     test "native path without html kills after Total line" do
-      # Create a fake coverdata file so hash works
-      File.mkdir_p!("cover")
-      File.write!("cover/test.coverdata", "fake")
-      # Clear cache
-      File.rm(".check/coverage_cache.hash")
-      File.rm(".check/coverage_cache.txt")
+      stub_coverdata()
 
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     75.00% | Total        |")
@@ -210,15 +235,10 @@ defmodule Check.CoverageTest do
       assert_received :ok
       assert io =~ "75.0%"
       assert io =~ "Merging coverage data"
-    after
-      File.rm_rf!("cover/test.coverdata")
     end
 
     test "native path with html collects all output" do
-      File.mkdir_p!("cover")
-      File.write!("cover/test.coverdata", "fake")
-      File.rm(".check/coverage_cache.hash")
-      File.rm(".check/coverage_cache.txt")
+      stub_coverdata()
 
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     88.00% | Total        |\nGenerating HTML...")
@@ -231,15 +251,12 @@ defmodule Check.CoverageTest do
 
       assert_received :ok
       assert io =~ "88.0%"
-    after
-      File.rm_rf!("cover/test.coverdata")
     end
 
     test "native path uses cache on second call" do
-      File.mkdir_p!("cover")
-      File.write!("cover/test.coverdata", "fake_data")
-      File.rm(".check/coverage_cache.hash")
-      File.rm(".check/coverage_cache.txt")
+      stub(Path, :wildcard, fn "cover/*.coverdata" -> ["cover/fake.coverdata"] end)
+      stub(File, :read!, fn "cover/fake.coverdata" -> "fake_data" end)
+      start_mem_fs()
 
       # First call — cache miss, runs port
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
@@ -262,15 +279,32 @@ defmodule Check.CoverageTest do
       assert_received :ok
       assert io =~ "(cached)"
       assert io =~ "92.0%"
-    after
-      File.rm_rf!("cover/test.coverdata")
     end
 
     test "native path cache miss when coverdata changes" do
-      File.mkdir_p!("cover")
-      File.write!("cover/test.coverdata", "version1")
-      File.rm(".check/coverage_cache.hash")
-      File.rm(".check/coverage_cache.txt")
+      counter = start_supervised!({Agent, fn -> 0 end}, id: :coverdata_counter)
+      fs = start_supervised!({Agent, fn -> %{} end}, id: :coverage_fs)
+
+      stub(Path, :wildcard, fn "cover/*.coverdata" -> ["cover/fake.coverdata"] end)
+
+      stub(File, :read!, fn "cover/fake.coverdata" ->
+        n = Agent.get_and_update(counter, fn n -> {n, n + 1} end)
+        if n == 0, do: "version1", else: "version2"
+      end)
+
+      stub(File, :write!, fn path, content ->
+        Agent.update(fs, &Map.put(&1, path, content))
+        :ok
+      end)
+
+      stub(File, :read, fn path ->
+        case Agent.get(fs, &Map.get(&1, path)) do
+          nil -> {:error, :enoent}
+          content -> {:ok, content}
+        end
+      end)
+
+      stub(File, :mkdir_p!, fn _path -> :ok end)
 
       # First call
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
@@ -281,10 +315,7 @@ defmodule Check.CoverageTest do
         Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil})
       end)
 
-      # Change coverdata
-      File.write!("cover/test.coverdata", "version2")
-
-      # Second call — cache miss, new port call
+      # Second call — coverdata changed, hash differs → cache miss → port runs again
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     80.00% | Total        |")
       end)
@@ -300,15 +331,10 @@ defmodule Check.CoverageTest do
       assert_received :ok
       refute io =~ "(cached)"
       assert io =~ "80.0%"
-    after
-      File.rm_rf!("cover/test.coverdata")
     end
 
     test "native path fails when below limit" do
-      File.mkdir_p!("cover")
-      File.write!("cover/test.coverdata", "fake")
-      File.rm(".check/coverage_cache.hash")
-      File.rm(".check/coverage_cache.txt")
+      stub_coverdata()
 
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     50.00% | Total        |")
@@ -322,21 +348,18 @@ defmodule Check.CoverageTest do
       assert_received :failed
       assert io =~ "50.0%"
       assert io =~ "limit: 80%"
-    after
-      File.rm_rf!("cover/test.coverdata")
     end
   end
 
   describe "show_modified_files_coverage/0" do
     test "does nothing when cache file does not exist" do
-      File.rm(".check/coverage_cache.txt")
+      stub(File, :read, fn _path -> {:error, :enoent} end)
       io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
       assert io == ""
     end
 
     test "does nothing when base_branch cannot be resolved" do
-      File.mkdir_p!(".check")
-      File.write!(".check/coverage_cache.txt", "| SomeModule | 85.00% |")
+      stub(File, :read, fn ".check/coverage_cache.txt" -> {:ok, "| SomeModule | 85.00% |"} end)
       stub(Check.Config, :load, fn -> {:ok, %{}} end)
       stub(Check.Config, :base_branch, fn _config -> nil end)
       io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
@@ -381,6 +404,42 @@ defmodule Check.CoverageTest do
         assert io =~ "Coverage of modified files:"
         assert io =~ "ModifiedModule"
         refute io =~ "UnrelatedModule"
+      after
+        File.cd!(original_dir)
+      end
+    end
+
+    @tag :tmp_dir
+    test "links the module to its cover HTML report (Elixir.<Module>.html)", %{tmp_dir: tmp_dir} do
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        File.mkdir_p!(".check")
+        File.mkdir_p!("lib")
+        File.mkdir_p!("cover")
+
+        File.write!(".check/coverage_cache.txt", "| ModifiedModule | 74.00% |\n")
+        File.write!("lib/modified_module.ex", "defmodule ModifiedModule do\nend\n")
+        # Cover HTML uses the full BEAM module name.
+        File.write!("cover/Elixir.ModifiedModule.html", "<html></html>")
+
+        stub(Check.Config, :load, fn -> {:ok, %{}} end)
+        stub(Check.Config, :base_branch, fn _config -> "main" end)
+
+        stub(System, :cmd, fn "git", args, _opts ->
+          cond do
+            args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+            "--diff-filter=M" in args -> {"lib/modified_module.ex\n", 0}
+            true -> {"", 0}
+          end
+        end)
+
+        io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
+
+        # OSC 8 hyperlink pointing at the Elixir.-prefixed cover file.
+        assert io =~ "\e]8;;file://"
+        assert io =~ "cover/Elixir.ModifiedModule.html"
       after
         File.cd!(original_dir)
       end
@@ -441,8 +500,6 @@ defmodule Check.CoverageTest do
         stub(Check.Config, :load, fn -> {:ok, %{}} end)
         stub(Check.Config, :base_branch, fn _config -> "main" end)
 
-        # current branch == base branch ("main"), and a parent commit exists,
-        # so the diff must target HEAD~1 — never the empty "main...HEAD" range.
         stub(System, :cmd, fn "git", args, _opts ->
           cond do
             args == ["rev-parse", "--abbrev-ref", "HEAD"] ->

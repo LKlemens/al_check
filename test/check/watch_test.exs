@@ -1,5 +1,5 @@
 defmodule Check.WatchTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Mimic
 
   import ExUnit.CaptureIO
@@ -13,7 +13,7 @@ defmodule Check.WatchTest do
   describe "run/0" do
     test "halts when no partition files exist" do
       stub_halt()
-      Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
+      stub(Path, :wildcard, fn ".check/test_partition_*.txt" -> [] end)
 
       output =
         capture_io(fn ->
@@ -25,13 +25,13 @@ defmodule Check.WatchTest do
 
     test "starts watching when partition files exist" do
       stub_halt()
-      File.mkdir_p!(".check")
-      File.write!(".check/test_partition_1.txt", "test output")
+      stub(Path, :wildcard, fn ".check/test_partition_*.txt" -> [".check/test_partition_1.txt"] end)
+      stub(File, :mkdir_p!, fn _ -> :ok end)
+      stub(File, :write!, fn _, _ -> :ok end)
 
-      # Mock Port.open to return a port that exits immediately
       expect(Check.Port, :open, fn "tail", args ->
         assert "-f" in args
-        # Return a port that just exits
+
         Port.open({:spawn_executable, System.find_executable("echo")}, [
           :binary,
           :exit_status,
@@ -47,8 +47,6 @@ defmodule Check.WatchTest do
       assert output =~ "Watching"
       assert output =~ "test partition file(s)"
       assert output =~ "watching..."
-    after
-      File.rm(".check/test_partition_1.txt")
     end
   end
 end
