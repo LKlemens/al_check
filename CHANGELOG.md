@@ -19,6 +19,9 @@
   full run
 - `--full-coverage-output` flag prints the entire per-module coverage table
   (otherwise only the total and the new/modified breakdown are shown)
+- `--with-html` flag forces the HTML coverage report for a single run,
+  overriding `"html": false` in `.check.json`. Used on its own it implies
+  `--coverage` (like `--full-coverage-output`)
 
 ### Changed
 - `modified_tests` no longer reports coverage: it runs only the selected

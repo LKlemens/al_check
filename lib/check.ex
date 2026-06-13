@@ -26,6 +26,7 @@ defmodule Check do
       check --verbose                     # Print test output directly instead of partition status
       check --coverage                    # Show coverage report (cached if unchanged)
       check --full-coverage-output        # Also print the entire per-module coverage table
+      check --with-html                   # Force HTML coverage report (overrides "html": false)
       check --no-coverage                 # Run without coverage (overrides .check.json)
       check --repeat 10                   # Run tests with --repeat-until-failure 10 (default: 100)
       check --quiet                       # Disable spinner animation
@@ -108,15 +109,17 @@ defmodule Check do
       found in [:setup_db, :db_setup, :drop_db, :db_drop, :for_partitions] -> :partitions
       found -> found
       fix_mode -> :fix
-      standalone_full_coverage?(opts) -> :coverage
+      standalone_coverage?(opts) -> :coverage
       true -> :checks
     end
   end
 
-  # `--full-coverage-output` on its own implies `--coverage` (show the report);
-  # alongside --only/--fast it stays a modifier for the full/selected run.
-  defp standalone_full_coverage?(opts),
-    do: !!opts[:full_coverage_output] and is_nil(opts[:only]) and !opts[:fast]
+  # A coverage-only flag (`--full-coverage-output` / `--with-html`) on its own implies
+  # `--coverage` (show the report); alongside --only/--fast it stays a modifier.
+  defp standalone_coverage?(opts) do
+    (!!opts[:full_coverage_output] or !!opts[:with_html]) and
+      is_nil(opts[:only]) and !opts[:fast]
+  end
 
   defp run_command(:version, _opts, _mock, _config), do: IO.puts("check #{@version}")
   defp run_command(:init, _opts, _mock, _config), do: Config.init()
@@ -146,6 +149,7 @@ defmodule Check do
       config["coverage"]
       |> Config.parse_coverage()
       |> Map.put(:full, opts[:full_coverage_output] || false)
+      |> then(&Map.put(&1, :html, opts[:with_html] || &1.html))
 
     if coverage.mod == false do
       IO.puts(:stderr, "Coverage not configured. Set \"coverage\" in .check.json")
@@ -171,6 +175,7 @@ defmodule Check do
         else: Config.parse_coverage(config["coverage"])
 
     coverage = Map.put(coverage, :full, opts[:full_coverage_output] || false)
+    coverage = Map.put(coverage, :html, opts[:with_html] || coverage.html)
 
     partitions = if mock_mode, do: partitions, else: Tasks.cap_partitions(partitions, test_dir)
 
@@ -223,6 +228,7 @@ defmodule Check do
           version: :boolean,
           coverage: :boolean,
           full_coverage_output: :boolean,
+          with_html: :boolean,
           quiet: :boolean,
           setup_db: :boolean,
           drop_db: :boolean,
@@ -259,7 +265,7 @@ defmodule Check do
   end
 
   @allowed_invalid ~w(--repeat)
-  @valid_flags ~w(--only --fix --fast --partitions --failed --all-failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --full-coverage-output --no-coverage --test-args --setup-db --db-setup --drop-db --db-drop --for-partitions)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --all-failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --full-coverage-output --with-html --no-coverage --test-args --setup-db --db-setup --drop-db --db-drop --for-partitions)
 
   defp reject_invalid_flags(invalid) do
     unknown =

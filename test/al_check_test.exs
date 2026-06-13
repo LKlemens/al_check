@@ -225,6 +225,37 @@ defmodule AlCheckTest do
     end
   end
 
+  describe "--with-html" do
+    @describetag :tmp_dir
+
+    setup %{tmp_dir: tmp_dir} do
+      cwd = File.cwd!()
+      File.cd!(tmp_dir)
+      on_exit(fn -> File.cd!(cwd) end)
+      :ok
+    end
+
+    test "standalone implies the coverage command" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      stderr =
+        capture_io(:stderr, fn ->
+          capture_io(fn -> catch_throw(Check.main(["--with-html"])) end)
+        end)
+
+      assert stderr =~ "Coverage not configured"
+    end
+
+    test "stays a modifier when combined with --only" do
+      output =
+        capture_io(fn ->
+          Check.main(["--only", "test", "--with-html", "--partitions", "1", "mock"])
+        end)
+
+      assert output =~ "All checks passed"
+    end
+  end
+
   describe "partition commands" do
     test "--setup-db runs db setup for partitions" do
       stub(System, :halt, fn code -> throw({:halted, code}) end)
