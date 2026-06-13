@@ -1,5 +1,5 @@
 defmodule Check.FixTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Mimic
 
   import ExUnit.CaptureIO
@@ -10,6 +10,10 @@ defmodule Check.FixTest do
 
   defp stub_halt do
     stub(System, :halt, fn code -> throw({:halted, code}) end)
+  end
+
+  defp stub_no_credo_files do
+    stub(Path, :wildcard, fn ".check/credo*.txt" -> [] end)
   end
 
   describe "extract_file_paths/1" do
@@ -33,9 +37,7 @@ defmodule Check.FixTest do
 
   describe "run/0 - simple commands" do
     test "runs default fix commands" do
-      File.rm(".check/credo.txt")
-      File.rm(".check/credo_strict.txt")
-
+      stub_no_credo_files()
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 
       output = capture_io(fn -> Fix.run() end)
@@ -47,6 +49,7 @@ defmodule Check.FixTest do
 
     test "halts on command failure" do
       stub_halt()
+      stub_no_credo_files()
 
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"error", 1} end)
 
@@ -61,9 +64,12 @@ defmodule Check.FixTest do
 
   describe "run/0 - files from txt" do
     test "runs recode on files from credo txt" do
-      File.mkdir_p!(".check")
-      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n  ┃   lib/bar.ex:20:3\n")
-      File.rm(".check/credo_strict.txt")
+      stub(Check.Config, :load, fn -> {:ok, %{}} end)
+      stub(Path, :wildcard, fn ".check/credo*.txt" -> [".check/credo.txt"] end)
+
+      stub(File, :read!, fn ".check/credo.txt" ->
+        "  ┃   lib/foo.ex:10:5\n  ┃   lib/bar.ex:20:3\n"
+      end)
 
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 
@@ -80,9 +86,7 @@ defmodule Check.FixTest do
     end
 
     test "skips when txt file does not exist" do
-      File.rm(".check/credo.txt")
-      File.rm(".check/credo_strict.txt")
-
+      stub_no_credo_files()
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 
       output = capture_io(fn -> Fix.run() end)
@@ -92,9 +96,16 @@ defmodule Check.FixTest do
     end
 
     test "combines files from credo and credo_strict" do
-      File.mkdir_p!(".check")
-      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n")
-      File.write!(".check/credo_strict.txt", "  ┃   lib/bar.ex:20:3\n")
+      stub(Check.Config, :load, fn -> {:ok, %{}} end)
+
+      stub(Path, :wildcard, fn ".check/credo*.txt" ->
+        [".check/credo.txt", ".check/credo_strict.txt"]
+      end)
+
+      stub(File, :read!, fn
+        ".check/credo.txt" -> "  ┃   lib/foo.ex:10:5\n"
+        ".check/credo_strict.txt" -> "  ┃   lib/bar.ex:20:3\n"
+      end)
 
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 
@@ -110,9 +121,12 @@ defmodule Check.FixTest do
     end
 
     test "deduplicates files" do
-      File.mkdir_p!(".check")
-      File.write!(".check/credo.txt", "  ┃   lib/foo.ex:10:5\n  ┃   lib/foo.ex:20:3\n")
-      File.rm(".check/credo_strict.txt")
+      stub(Check.Config, :load, fn -> {:ok, %{}} end)
+      stub(Path, :wildcard, fn ".check/credo*.txt" -> [".check/credo.txt"] end)
+
+      stub(File, :read!, fn ".check/credo.txt" ->
+        "  ┃   lib/foo.ex:10:5\n  ┃   lib/foo.ex:20:3\n"
+      end)
 
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 

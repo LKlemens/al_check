@@ -1,10 +1,38 @@
 defmodule Check.FailedTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Mimic
 
   alias Check.Failed
 
   setup :verify_on_exit!
+
+  setup do
+    fs = start_supervised!({Agent, fn -> %{} end})
+    stub(File, :mkdir_p!, fn _ -> :ok end)
+
+    stub(File, :write!, fn path, content ->
+      Agent.update(fs, &Map.put(&1, path, content))
+      :ok
+    end)
+
+    stub(File, :read!, fn path -> Agent.get(fs, &Map.fetch!(&1, path)) end)
+
+    stub(File, :read, fn path ->
+      case Agent.get(fs, &Map.get(&1, path)) do
+        nil -> {:error, :enoent}
+        content -> {:ok, content}
+      end
+    end)
+
+    stub(File, :exists?, fn path -> Agent.get(fs, &Map.has_key?(&1, path)) end)
+
+    stub(File, :rm, fn path ->
+      Agent.update(fs, &Map.delete(&1, path))
+      :ok
+    end)
+
+    :ok
+  end
 
   defp stub_halt do
     stub(System, :halt, fn code -> throw({:halted, code}) end)
@@ -161,15 +189,12 @@ defmodule Check.FailedTest do
   end
 
   describe "run/1 (mocked halt)" do
-    test "halts when no failed_tests.txt exists" do
+    @tag :tmp_dir
+    test "halts when no failed_tests.txt exists", %{tmp_dir: tmp_dir} do
       stub_halt()
 
       original_dir = File.cwd!()
-      tmp = System.tmp_dir!()
-      uniq = "#{System.unique_integer([:positive])}"
-      dir = Path.join(tmp, "failed_test_#{uniq}")
-      File.mkdir_p!(dir)
-      File.cd!(dir)
+      File.cd!(tmp_dir)
 
       try do
         output =
@@ -180,12 +205,10 @@ defmodule Check.FailedTest do
         assert output =~ "No failed tests found"
       after
         File.cd!(original_dir)
-        File.rm_rf!(dir)
       end
     end
 
     test "prints message when failed_tests.txt is empty" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "")
 
       output =
@@ -197,7 +220,6 @@ defmodule Check.FailedTest do
     end
 
     test "runs failed tests and reports success" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Failed.save_test_args("--warnings-as-errors")
 
@@ -223,7 +245,6 @@ defmodule Check.FailedTest do
 
     test "runs failed tests and reports failure" do
       stub_halt()
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/bar_test.exs:20")
       Failed.save_test_args("--warnings-as-errors")
 
@@ -245,7 +266,6 @@ defmodule Check.FailedTest do
     end
 
     test "passes repeat flag to test command" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Failed.save_test_args("--warnings-as-errors")
 
@@ -266,7 +286,6 @@ defmodule Check.FailedTest do
     end
 
     test "adds --export-coverage failed when saved args have --cover" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       Failed.save_test_args("--cover")
 
@@ -290,7 +309,6 @@ defmodule Check.FailedTest do
 
   describe "still_failing.txt" do
     test "on success deletes still_failing.txt" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")
       File.write!(".check/still_failing.txt", "test/foo_test.exs:10")
       Failed.save_test_args("--warnings-as-errors")
@@ -310,9 +328,7 @@ defmodule Check.FailedTest do
 
     test "on failure writes still_failing.txt" do
       stub_halt()
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/a.exs:1\ntest/b.exs:2")
-      File.rm(".check/still_failing.txt")
       Failed.save_test_args("--warnings-as-errors")
 
       # simulate output where only test/a.exs:1 fails
@@ -337,7 +353,6 @@ defmodule Check.FailedTest do
     end
 
     test "--failed reads from still_failing.txt when it exists" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/a.exs:1\ntest/b.exs:2")
       File.write!(".check/still_failing.txt", "test/a.exs:1")
       Failed.save_test_args("--warnings-as-errors")
@@ -358,7 +373,6 @@ defmodule Check.FailedTest do
     end
 
     test "--all-failed reads from failed_tests.txt" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/a.exs:1\ntest/b.exs:2")
       File.write!(".check/still_failing.txt", "test/a.exs:1")
       Failed.save_test_args("--warnings-as-errors")
@@ -379,9 +393,7 @@ defmodule Check.FailedTest do
     end
 
     test "--failed falls back to failed_tests.txt when no still_failing" do
-      File.mkdir_p!(".check")
       File.write!(".check/failed_tests.txt", "test/a.exs:1")
-      File.rm(".check/still_failing.txt")
       Failed.save_test_args("--warnings-as-errors")
 
       expect(Check.Port, :open, fn "mix", args ->

@@ -6,8 +6,9 @@
 - Modified-file coverage report: after running tests, coverage for newly
   added and modified files (vs. base branch) is shown grouped into
   "new files" and "modified files" with per-group averages
-- Module names in coverage output are rendered as OSC 8 terminal
-  hyperlinks pointing to the HTML report when available
+- Per-module HTML coverage reports for new/modified files are copied to
+  `.check/cover_modified/` (together with the shared CSS/JS assets so they
+  render standalone), and a `file://` link to that directory is printed
 - `Runner.stream_and_capture_port/1` — streams port output to stdout
   while also capturing it for downstream inspection
 - Modified-test runs now print a note clarifying that only committed
@@ -18,6 +19,8 @@
   full run
 
 ### Changed
+- Coverage summary line now prints a clickable `file://…/index.html` link to
+  the HTML report instead of the bare `Report: cover/` directory path
 - `modified_tests` no longer reports coverage: it runs only the selected
   test lines, so per-file coverage numbers were misleadingly low.
   `modified_test_modules` (whole files) still reports coverage

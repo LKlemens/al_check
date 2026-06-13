@@ -131,4 +131,5 @@ AlCheck creates a `.check/` directory:
 | `.check/failed_tests.txt` | Original failed test locations (from last check run) |
 | `.check/still_failing.txt` | Tests still failing after `--failed` runs |
 | `.check/coverage_cache.*` | Cached coverage results |
+| `.check/cover_modified/` | Per-module HTML coverage reports for new/modified files (with shared assets) |
 | `.check/test_args.txt` | Saved test args for `--failed` |

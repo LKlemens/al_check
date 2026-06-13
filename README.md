@@ -9,7 +9,7 @@
 
 A parallel code quality checker for Elixir projects. Runs format, compile, credo, dialyzer, and tests concurrently with smart test partitioning.
 
-> Check out how it works in the [showcase](https://al-check-demo.fly.dev/apps/al-check-demo)
+> Check out how it works in the [showcase](https://github.com/LKlemens/al_check/blob/coverage_do_not_delete/TOUR.md)
 
 ## Features
 
@@ -91,6 +91,10 @@ check --help             # Show all options
 ## Documentation
 
 Full API documentation is available at [https://hexdocs.pm/al_check](https://hexdocs.pm/al_check).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the release history and notable changes.
 
 ## Requirements
 

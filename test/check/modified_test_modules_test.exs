@@ -8,6 +8,18 @@ defmodule Check.ModifiedTestModulesTest do
 
   setup :verify_on_exit!
 
+  # Run every test in an isolated cwd: .run/1 calls clean_coverdata/0
+  # (rm cover/*.coverdata) and writes relative paths, which would otherwise wipe
+  # the real project's coverdata mid-run (e.g. under `check --only test`).
+  @moduletag :tmp_dir
+
+  setup %{tmp_dir: tmp_dir} do
+    cwd = File.cwd!()
+    File.cd!(tmp_dir)
+    on_exit(fn -> File.cd!(cwd) end)
+    :ok
+  end
+
   describe "run/1" do
     test "returns ok when no modified files" do
       stub(System, :cmd, fn "git", args, _opts ->
@@ -112,9 +124,10 @@ defmodule Check.ModifiedTestModulesTest do
         end
       end)
 
-      # File must exist for filter
-      File.mkdir_p!("test")
-      File.write!("test/foo_test.exs", "defmodule FooTest do\nend\n")
+      stub(File, :exists?, fn
+        "test/foo_test.exs" -> true
+        _path -> false
+      end)
 
       expect(Check.Port, :open, fn "mix", args ->
         assert "--warnings-as-errors" in args

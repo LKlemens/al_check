@@ -6,6 +6,11 @@ defmodule AlCheckTest do
 
   setup :verify_on_exit!
 
+  setup do
+    stub(File, :rm, fn _path -> :ok end)
+    :ok
+  end
+
   test "version is set" do
     assert is_binary(Mix.Project.config()[:version])
   end
@@ -154,8 +159,6 @@ defmodule AlCheckTest do
 
   describe "--no-coverage" do
     test "runs tests without coverage" do
-      File.rm(".check/test_args.txt")
-
       output =
         capture_io(fn ->
           Check.main(["--only", "test", "--no-coverage", "--partitions", "1", "mock"])

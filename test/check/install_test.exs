@@ -16,9 +16,7 @@ defmodule Mix.Tasks.Check.InstallTest do
         {"", 0}
       end)
 
-      # Create the escript file so install_escript finds it
-      File.mkdir_p!("scripts")
-      File.write!("scripts/check", "fake escript")
+      stub(File, :exists?, fn path -> String.ends_with?(path, "/scripts/check") end)
 
       output =
         ExUnit.CaptureIO.capture_io(fn ->

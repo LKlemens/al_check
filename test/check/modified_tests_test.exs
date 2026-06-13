@@ -8,6 +8,18 @@ defmodule Check.ModifiedTestsTest do
 
   setup :verify_on_exit!
 
+  # Run every test in an isolated cwd: .run/1 calls clean_coverdata/0
+  # (rm cover/*.coverdata) and writes relative paths, which would otherwise wipe
+  # the real project's coverdata mid-run (e.g. under `check --only test`).
+  @moduletag :tmp_dir
+
+  setup %{tmp_dir: tmp_dir} do
+    cwd = File.cwd!()
+    File.cd!(tmp_dir)
+    on_exit(fn -> File.cd!(cwd) end)
+    :ok
+  end
+
   # Stubs the git calls made during a run: branch detection, the modified-files
   # listing (returns `file`), and the per-file hunk diff (returns `hunk`).
   # `--abbrev-ref` reports a feature branch so the committed range is base...HEAD.

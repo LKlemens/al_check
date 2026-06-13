@@ -2,6 +2,7 @@ defmodule Check.Coverage do
   @moduledoc "Coverage merging, caching, and threshold checking."
 
   @coverage_cache_path ".check/coverage_cache"
+  @cover_modified_dir ".check/cover_modified"
 
   def merge(%{mod: false}), do: :ok
 
@@ -101,7 +102,7 @@ defmodule Check.Coverage do
 
   defp report_coverage(percentage, dir, limit) when is_number(limit) and percentage < limit do
     IO.puts([
-      IO.ANSI.format([:red, "✗ Coverage: #{percentage}% (limit: #{limit}%) | Report: #{dir}"])
+      IO.ANSI.format([:red, "✗ Coverage: #{percentage}% (limit: #{limit}%) | #{html_url(dir)}"])
     ])
 
     :failed
@@ -109,8 +110,12 @@ defmodule Check.Coverage do
 
   defp report_coverage(percentage, dir, _limit) do
     color = if percentage >= 80, do: :green, else: :yellow
-    IO.puts([IO.ANSI.format([color, "✓ Coverage: #{percentage}% | Report: #{dir}"])])
+    IO.puts([IO.ANSI.format([color, "✓ Coverage: #{percentage}% | #{html_url(dir)}"])])
     :ok
+  end
+
+  defp html_url(dir) do
+    "file://#{Path.join(File.cwd!(), dir)}/index.html"
   end
 
   defp compare_baseline(_percentage, nil), do: :ok
@@ -214,6 +219,8 @@ defmodule Check.Coverage do
 
     print_coverage_group("Coverage of new files:", new_lines, :green)
     print_coverage_group("Coverage of modified files:", modified_lines, :yellow)
+
+    copy_modified_htmls(new_modules ++ modified_modules)
   end
 
   defp modules_from_files(files), do: Enum.flat_map(files, &extract_modules_from_file/1)
@@ -222,7 +229,7 @@ defmodule Check.Coverage do
 
   defp print_coverage_group(title, lines, color) do
     IO.puts([IO.ANSI.format([color, "\n#{title}"])])
-    Enum.each(lines, fn line -> IO.puts(linkify_module(line)) end)
+    Enum.each(lines, fn line -> IO.puts(line) end)
 
     case avg_percentage(lines) do
       nil -> :ok
@@ -261,22 +268,37 @@ defmodule Check.Coverage do
     end
   end
 
-  # Make module name a clickable link to the HTML coverage report (OSC 8 hyperlinks)
-  defp linkify_module(line) do
-    case Regex.run(~r/\|\s*([\w.]+)\s*\|/, line) do
-      [_, module] ->
-        html_path = Path.join([File.cwd!(), "cover", "#{module}.html"])
+  defp copy_modified_htmls([]), do: :ok
 
-        if File.exists?(html_path) do
-          link = "\e]8;;file://#{html_path}\e\\#{module}\e]8;;\e\\"
-          String.replace(line, module, link)
-        else
-          line
-        end
+  defp copy_modified_htmls(modules) do
+    cwd = File.cwd!()
+    src_dir = Path.join(cwd, "cover")
+    dest_dir = Path.join(cwd, @cover_modified_dir)
+
+    File.mkdir_p!(dest_dir)
+
+    Enum.each(modules, fn module ->
+      src = Path.join(src_dir, "Elixir.#{module}.html")
+
+      if File.exists?(src) do
+        File.cp!(src, Path.join(dest_dir, "Elixir.#{module}.html"))
+      end
+    end)
+
+    # Copy shared assets so HTML files render correctly
+    case File.ls(src_dir) do
+      {:ok, entries} ->
+        entries
+        |> Enum.filter(&(String.ends_with?(&1, ".css") or String.ends_with?(&1, ".js")))
+        |> Enum.each(fn asset ->
+          File.cp!(Path.join(src_dir, asset), Path.join(dest_dir, asset))
+        end)
 
       _ ->
-        line
+        :ok
     end
+
+    IO.puts([IO.ANSI.format([:cyan, "\n  Limited coverage result: file://#{dest_dir}/"])])
   end
 
   defp get_ex_files_by_filter(base_branch, filter) do
