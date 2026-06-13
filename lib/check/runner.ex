@@ -102,7 +102,23 @@ defmodule Check.Runner do
     )
     |> Enum.map(fn {:ok, {name, index, status, output, test_count}} ->
       if not verbose, do: UI.update_task_line(index, name, status, task_count, test_count)
-      {name, status, output}
+      {name, index, status, output}
+    end)
+    |> tap(&print_builtin_output(tasks, &1))
+    |> Enum.map(fn {name, _index, status, output} -> {name, status, output} end)
+  end
+
+  # Builtin output is captured during the run (so it can't clobber the status
+  # UI); print it below the finalized status lines, in task order.
+  defp print_builtin_output(tasks, results) do
+    builtin_names =
+      for {name, :builtin, _args} <- tasks, into: MapSet.new(), do: name
+
+    results
+    |> Enum.filter(fn {name, _index, _status, _output} -> MapSet.member?(builtin_names, name) end)
+    |> Enum.sort_by(fn {_name, index, _status, _output} -> index end)
+    |> Enum.each(fn {_name, _index, _status, output} ->
+      if output not in [nil, ""], do: IO.write(output)
     end)
   end
 
@@ -145,13 +161,36 @@ defmodule Check.Runner do
          _verbose,
          test_opts
        ) do
-    {status, output} = run_builtin(hd(args), test_opts)
-    {name, index, status, output, nil}
+    # Capture the builtin's stdout so its live output can't corrupt the
+    # cursor-based status UI (UI.update_task_line uses relative cursor moves).
+    # It is reprinted below the status lines once they are drawn.
+    {status, captured} = capture_builtin_output(hd(args), test_opts)
+    {name, index, status, captured, nil}
   end
 
   defp execute_task({name, cmd, args}, index, _task_count, _dot_counter_pid, verbose, _test_opts) do
     {status, output} = run_check(cmd, args, verbose)
     {name, index, status, output, nil}
+  end
+
+  defp capture_builtin_output(builtin, test_opts) do
+    {:ok, sio} = StringIO.open("")
+    group_leader = Process.group_leader()
+    previous_quiet = Application.get_env(:al_check, :quiet, false)
+
+    Process.group_leader(self(), sio)
+    Application.put_env(:al_check, :quiet, true)
+
+    {status, _output} =
+      try do
+        run_builtin(builtin, test_opts)
+      after
+        Process.group_leader(self(), group_leader)
+        Application.put_env(:al_check, :quiet, previous_quiet)
+      end
+
+    {:ok, {_in, captured}} = StringIO.close(sio)
+    {status, captured}
   end
 
   defp run_check_with_streaming(

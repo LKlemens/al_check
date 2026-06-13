@@ -23,6 +23,11 @@
   `modified_test_modules` (whole files) still reports coverage
 
 ### Fixed
+- Builtin checks (`modified_tests`, `modified_test_modules`) no longer have
+  their output clobbered by the parallel status UI: their stdout (including
+  the "no modified test files found" warning) was being erased by the
+  in-place `[OK]` cursor redraw. Builtin output is now captured during the
+  run and reprinted below the finalized status lines
 - Failure detection regex now matches doctests and property-based test
   failures, not only regular `test` blocks
 - `coverage_threshold_failure?/1` handles the alternative

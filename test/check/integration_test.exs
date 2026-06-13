@@ -342,7 +342,7 @@ defmodule Check.IntegrationTest do
   describe "builtin checks in task flow" do
     test "builtin check runs through runner" do
       # Keep the builtin deterministic regardless of the repo's real git state:
-      # report no modified test files so it short-circuits to {0, ""}.
+      # report no modified test files so it warns and passes.
       stub(System, :cmd, fn "git", args, _opts ->
         cond do
           args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
@@ -359,8 +359,12 @@ defmodule Check.IntegrationTest do
           send(self(), {:results, results})
         end)
 
-      assert_received {:results, [{"Modified Tests", 0, ""}]}
+      # The builtin's stdout is captured and returned as its output (so the
+      # status UI isn't corrupted), then reprinted below the status lines.
+      assert_received {:results, [{"Modified Tests", 0, builtin_output}]}
+      assert builtin_output =~ "no modified test files found"
       assert output =~ "Running code quality checks"
+      assert output =~ "no modified test files found"
     end
 
     test "unknown builtin reports error" do
