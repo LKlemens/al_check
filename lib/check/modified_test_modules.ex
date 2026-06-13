@@ -21,7 +21,10 @@ defmodule Check.ModifiedTestModules do
         {1, msg}
 
       {:ok, []} ->
-        IO.puts("No modified test files on this branch")
+        IO.puts([
+          IO.ANSI.format([:yellow, "Warning: no modified test modules found on this branch"])
+        ])
+
         {0, ""}
 
       {:ok, files} ->

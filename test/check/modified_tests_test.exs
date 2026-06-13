@@ -266,7 +266,7 @@ defmodule Check.ModifiedTestsTest do
         end)
 
       assert_received {0, _}
-      assert output =~ "No modified test files"
+      assert output =~ "no modified test files found"
     end
 
     @tag :tmp_dir

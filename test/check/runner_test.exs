@@ -105,7 +105,7 @@ defmodule Check.RunnerTest do
         end)
 
       assert_received {:result, 0, ""}
-      assert io =~ "No modified test files"
+      assert io =~ "no modified test files found"
     end
 
     test "modified_test_modules returns status tuple" do
@@ -118,7 +118,7 @@ defmodule Check.RunnerTest do
         end)
 
       assert_received {:result, 0, ""}
-      assert io =~ "No modified test files"
+      assert io =~ "no modified test modules found"
     end
   end
 
