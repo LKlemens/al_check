@@ -83,16 +83,11 @@ defmodule Check.ModifiedTestModules do
   end
 
   defp get_modified_test_files(base_branch) do
+    range = Check.Git.committed_diff_range(base_branch)
+
     case System.cmd(
            "git",
-           [
-             "diff",
-             "--name-only",
-             "--diff-filter=d",
-             "#{base_branch}...",
-             "--",
-             "test/**/*_test.exs"
-           ],
+           ["diff", "--name-only", "--diff-filter=d"] ++ range ++ ["--", "test/**/*_test.exs"],
            stderr_to_stdout: true
          ) do
       {output, 0} ->

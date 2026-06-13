@@ -48,16 +48,11 @@ defmodule Check.ModifiedTests do
   end
 
   defp get_modified_test_files(base_branch) do
+    range = Check.Git.committed_diff_range(base_branch)
+
     case System.cmd(
            "git",
-           [
-             "diff",
-             "--name-only",
-             "--diff-filter=d",
-             "#{base_branch}...",
-             "--",
-             "test/**/*_test.exs"
-           ],
+           ["diff", "--name-only", "--diff-filter=d"] ++ range ++ ["--", "test/**/*_test.exs"],
            stderr_to_stdout: true
          ) do
       {output, 0} ->
@@ -141,8 +136,10 @@ defmodule Check.ModifiedTests do
   defp setup_line?(line), do: String.match?(line, ~r/^\s*(setup|setup_all)\b/)
 
   defp get_changed_lines(file, base_branch) do
+    range = Check.Git.committed_diff_range(base_branch)
+
     {output, _status} =
-      System.cmd("git", ["diff", "-U0", "#{base_branch}...", "--", file], stderr_to_stdout: true)
+      System.cmd("git", ["diff", "-U0"] ++ range ++ ["--", file], stderr_to_stdout: true)
 
     # Parse @@ hunk headers: @@ -old,count +new,count @@
     ~r/@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/

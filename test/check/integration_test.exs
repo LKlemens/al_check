@@ -341,6 +341,16 @@ defmodule Check.IntegrationTest do
 
   describe "builtin checks in task flow" do
     test "builtin check runs through runner" do
+      # Keep the builtin deterministic regardless of the repo's real git state:
+      # report no modified test files so it short-circuits to {0, ""}.
+      stub(System, :cmd, fn "git", args, _opts ->
+        cond do
+          args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+          match?(["rev-parse" | _], args) -> {"", 0}
+          true -> {"", 0}
+        end
+      end)
+
       tasks = [{"Modified Tests", :builtin, ["modified_tests"]}]
 
       output =

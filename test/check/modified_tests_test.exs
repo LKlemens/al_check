@@ -8,6 +8,21 @@ defmodule Check.ModifiedTestsTest do
 
   setup :verify_on_exit!
 
+  # Stubs the git calls made during a run: branch detection, the modified-files
+  # listing (returns `file`), and the per-file hunk diff (returns `hunk`).
+  # `--abbrev-ref` reports a feature branch so the committed range is base...HEAD.
+  defp stub_git(file, hunk) do
+    stub(System, :cmd, fn "git", args, _opts ->
+      cond do
+        args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+        match?(["rev-parse" | _], args) -> {"", 0}
+        match?(["diff", "--name-only" | _], args) -> {file <> "\n", 0}
+        match?(["diff", "-U0" | _], args) -> {hunk, 0}
+        true -> {"", 0}
+      end
+    end)
+  end
+
   describe "find_enclosing_test/2" do
     test "finds test line above changed line" do
       lines = [
@@ -151,10 +166,7 @@ defmodule Check.ModifiedTestsTest do
       end
       """)
 
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
-      # hunk touching line 3 (setup inside describe)
-      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -3,1 +3,1 @@\n", 0} end)
+      stub_git(file, "@@ -3,1 +3,1 @@\n")
 
       expect(Check.Port, :open, fn "mix", ["test" | args] ->
         # should run describe block (line 2), not whole file
@@ -188,10 +200,7 @@ defmodule Check.ModifiedTestsTest do
       end
       """)
 
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
-      # hunk touching line 2 (module-level setup)
-      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
+      stub_git(file, "@@ -2,1 +2,1 @@\n")
 
       expect(Check.Port, :open, fn "mix", ["test" | args] ->
         # should run whole file
@@ -223,10 +232,7 @@ defmodule Check.ModifiedTestsTest do
       end
       """)
 
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
-      # hunk touching line 2 (describe line)
-      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
+      stub_git(file, "@@ -2,1 +2,1 @@\n")
 
       expect(Check.Port, :open, fn "mix", ["test" | args] ->
         assert Enum.any?(args, &String.contains?(&1, ":2"))
@@ -246,8 +252,13 @@ defmodule Check.ModifiedTestsTest do
   describe "run/1" do
     test "returns ok when no modified files" do
       # git diff returns no files
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {"", 0} end)
+      stub(System, :cmd, fn "git", args, _opts ->
+        cond do
+          args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+          match?(["rev-parse" | _], args) -> {"", 0}
+          true -> {"", 0}
+        end
+      end)
 
       output =
         capture_io(fn ->
@@ -274,12 +285,8 @@ defmodule Check.ModifiedTestsTest do
       end
       """)
 
-      # git rev-parse for base branch detection
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      # git diff --name-only returns our file
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
-      # git diff -U0 returns a hunk touching line 2 (setup)
-      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -2,1 +2,1 @@\n", 0} end)
+      # git diff --name-only returns our file; git diff -U0 a hunk touching line 2 (setup)
+      stub_git(file, "@@ -2,1 +2,1 @@\n")
       # mock Port.open for mix test
       expect(Check.Port, :open, fn "mix", ["test" | args] ->
         assert file in args
@@ -316,10 +323,8 @@ defmodule Check.ModifiedTestsTest do
       end
       """)
 
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {file <> "\n", 0} end)
       # hunk touching line 7 (inside "second" test)
-      expect(System, :cmd, fn "git", ["diff", "-U0" | _], _opts -> {"@@ -7,1 +7,1 @@\n", 0} end)
+      stub_git(file, "@@ -7,1 +7,1 @@\n")
 
       expect(Check.Port, :open, fn "mix", ["test" | args] ->
         assert Enum.any?(args, &String.contains?(&1, ":6"))

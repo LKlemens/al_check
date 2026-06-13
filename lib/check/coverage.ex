@@ -294,8 +294,8 @@ defmodule Check.Coverage do
   #   - feature branch: branch commits since base (base...HEAD) + uncommitted (HEAD)
   #   - base branch: last commit and uncommitted (HEAD~1), or just uncommitted on a root commit
   defp diff_revisions(base_branch) do
-    if current_branch() == base_branch do
-      if parent_commit?(), do: ["HEAD~1"], else: ["HEAD"]
+    if Check.Git.current_branch() == base_branch do
+      if Check.Git.parent_commit?(), do: ["HEAD~1"], else: ["HEAD"]
     else
       ["#{base_branch}...HEAD", "HEAD"]
     end
@@ -310,20 +310,6 @@ defmodule Check.Coverage do
       {output, 0} -> String.split(output, "\n", trim: true)
       _ -> []
     end
-  end
-
-  defp current_branch do
-    case System.cmd("git", ["rev-parse", "--abbrev-ref", "HEAD"], stderr_to_stdout: true) do
-      {output, 0} -> String.trim(output)
-      _ -> nil
-    end
-  end
-
-  defp parent_commit? do
-    match?(
-      {_, 0},
-      System.cmd("git", ["rev-parse", "--verify", "--quiet", "HEAD~1"], stderr_to_stdout: true)
-    )
   end
 
   # Read file and extract all defmodule names

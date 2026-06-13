@@ -25,6 +25,11 @@
   base branch: the three-dot `base...HEAD` diff collapses to nothing on
   the base branch, so it now diffs against `HEAD~1` there (and includes
   uncommitted working-tree changes on feature branches)
+- `modified_tests` and `modified_test_modules` now work on the base branch:
+  the same empty `base...HEAD` range meant `check --only modified_test_modules`
+  found nothing on `main`; they now compare against the latest commit
+  (`HEAD~1...HEAD`) there. Diff-range resolution is shared via the new
+  `Check.Git` module
 - "Tests now pass" notification color changed from green to yellow
 
 ## [0.1.22] - ...
