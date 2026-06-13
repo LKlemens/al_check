@@ -14,6 +14,7 @@ defmodule Check.Coverage do
     case read_cache(current_hash) do
       {:ok, cached_output} ->
         IO.puts([IO.ANSI.format([:cyan, "(cached)"])])
+        maybe_print_full(cached_output, coverage)
         check(cached_output, "cover/", coverage)
 
       :miss ->
@@ -29,6 +30,7 @@ defmodule Check.Coverage do
           end
 
         write_cache(current_hash, output)
+        maybe_print_full(output, coverage)
         check(output, "cover/", coverage)
     end
   end
@@ -39,8 +41,13 @@ defmodule Check.Coverage do
     {output, _status} =
       System.cmd("mix", ["coveralls", "--import-cover", "cover/"], stderr_to_stdout: true)
 
+    maybe_print_full(output, coverage)
     check(output, "cover/", coverage)
   end
+
+  # Print the entire coverage table when `--full-coverage-output` is set.
+  defp maybe_print_full(output, %{full: true}), do: IO.puts(output)
+  defp maybe_print_full(_output, _coverage), do: :ok
 
   # Stream output from mix test.coverage, kill once Total line is found
   defp collect_coverage_output(port, acc) do
@@ -115,7 +122,7 @@ defmodule Check.Coverage do
   end
 
   defp html_url(dir) do
-    "file://#{Path.join(File.cwd!(), dir)}/index.html"
+    "file://#{Path.join(File.cwd!(), dir)}"
   end
 
   defp compare_baseline(_percentage, nil), do: :ok

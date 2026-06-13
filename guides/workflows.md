@@ -83,7 +83,7 @@ Coverage is also merged automatically after partitioned test runs. Configure in 
 The summary line prints a clickable `file://` link to the HTML report. When
 `baseline_cmd` is set, it also shows the delta vs baseline:
 ```
-✓ Coverage: 85.5% | file:///path/to/project/cover/index.html
+✓ Coverage: 85.5% | file:///path/to/project/cover
   Coverage: +2.3% vs baseline (83.2%)
 ```
 

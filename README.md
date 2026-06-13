@@ -61,6 +61,7 @@ check --failed           # Re-run still-failing tests
 check --all-failed       # Re-run all originally failed tests
 check --fix              # Apply auto-fixes
 check --coverage         # Show coverage report
+check --full-coverage-output # Also print the entire per-module coverage table
 check --setup-db         # Run DB setup for each test partition
 check --drop-db          # Drop DB for each test partition
 check --quiet            # Disable spinner animation

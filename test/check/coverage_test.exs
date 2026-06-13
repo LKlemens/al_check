@@ -237,6 +237,45 @@ defmodule Check.CoverageTest do
       assert io =~ "Merging coverage data"
     end
 
+    test "full: true prints the entire per-module table" do
+      stub_coverdata()
+
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
+        echo_port("|  91.00% | MyApp.Foo |\n|  75.00% | Total        |")
+      end)
+
+      io =
+        capture_io(fn ->
+          send(
+            self(),
+            Coverage.merge(%{mod: :native, full: true, limit: nil, html: false, baseline_cmd: nil})
+          )
+        end)
+
+      assert_received :ok
+      assert io =~ "MyApp.Foo"
+      assert io =~ "75.0%"
+    end
+
+    test "full: false omits the per-module table" do
+      stub_coverdata()
+
+      expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
+        echo_port("|  91.00% | MyApp.Foo |\n|  75.00% | Total        |")
+      end)
+
+      io =
+        capture_io(fn ->
+          send(
+            self(),
+            Coverage.merge(%{mod: :native, full: false, limit: nil, html: false, baseline_cmd: nil})
+          )
+        end)
+
+      assert_received :ok
+      refute io =~ "MyApp.Foo"
+    end
+
     test "native path with html collects all output" do
       stub_coverdata()
 
