@@ -14,6 +14,8 @@ defmodule Check.ModifiedTests do
         {1, "Could not detect base branch. Set \"base_branch\" in .check.json"}
 
       base_branch ->
+        log_committed_only(base_branch)
+
         case get_modified_test_files(base_branch) do
           {:error, msg} ->
             {1, msg}
@@ -34,6 +36,15 @@ defmodule Check.ModifiedTests do
       {:ok, config} -> config
       _ -> %{}
     end
+  end
+
+  defp log_committed_only(base_branch) do
+    IO.puts([
+      IO.ANSI.format([
+        :light_black,
+        "  Note: only committed changes vs #{base_branch} are considered; uncommitted/working-tree changes are ignored"
+      ])
+    ])
   end
 
   defp get_modified_test_files(base_branch) do
@@ -185,14 +196,29 @@ defmodule Check.ModifiedTests do
       ])
     ])
 
+    clean_coverdata()
     port = Check.Port.open("mix", args)
-    status = Check.Runner.stream_port_output(port)
-    {status, ""}
+    {status, output} = Check.Runner.stream_and_capture_port(port)
+    status = if Check.Failed.coverage_threshold_failure?(output), do: 0, else: status
+    if status == 0, do: Check.Coverage.maybe_merge_and_show_modified()
+    {status, output}
   end
 
   defp extra_args(opts) do
     test_args = if opts[:test_args], do: String.split(opts[:test_args]), else: []
     repeat = if opts[:repeat], do: ["--repeat-until-failure", to_string(opts[:repeat])], else: []
-    test_args ++ repeat
+    cover = if coverage_enabled?(), do: ["--cover", "--export-coverage", "modified"], else: []
+    (test_args -- ["--cover"]) ++ repeat ++ cover
+  end
+
+  defp clean_coverdata do
+    Path.wildcard("cover/*.coverdata") |> Enum.each(&File.rm/1)
+  end
+
+  defp coverage_enabled? do
+    case Check.Config.load() do
+      {:ok, config} -> Check.Config.parse_coverage(config["coverage"]).mod != false
+      _ -> false
+    end
   end
 end

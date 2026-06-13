@@ -326,4 +326,208 @@ defmodule Check.CoverageTest do
       File.rm_rf!("cover/test.coverdata")
     end
   end
+
+  describe "show_modified_files_coverage/0" do
+    test "does nothing when cache file does not exist" do
+      File.rm(".check/coverage_cache.txt")
+      io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
+      assert io == ""
+    end
+
+    test "does nothing when base_branch cannot be resolved" do
+      File.mkdir_p!(".check")
+      File.write!(".check/coverage_cache.txt", "| SomeModule | 85.00% |")
+      stub(Check.Config, :load, fn -> {:ok, %{}} end)
+      stub(Check.Config, :base_branch, fn _config -> nil end)
+      io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
+      assert io == ""
+    end
+
+    @tag :tmp_dir
+    test "shows coverage for new and modified files separately", %{tmp_dir: tmp_dir} do
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        File.mkdir_p!(".check")
+        File.mkdir_p!("lib")
+
+        coverage_output = """
+        | NewModule      |  91.00% |
+        | ModifiedModule |  74.00% |
+        | UnrelatedModule|  60.00% |
+        | Total          |  80.00% |
+        """
+
+        File.write!(".check/coverage_cache.txt", coverage_output)
+        File.write!("lib/new_module.ex", "defmodule NewModule do\nend\n")
+        File.write!("lib/modified_module.ex", "defmodule ModifiedModule do\nend\n")
+
+        stub(Check.Config, :load, fn -> {:ok, %{}} end)
+        stub(Check.Config, :base_branch, fn _config -> "main" end)
+
+        stub(System, :cmd, fn "git", args, _opts ->
+          cond do
+            args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+            "--diff-filter=A" in args -> {"lib/new_module.ex\n", 0}
+            "--diff-filter=M" in args -> {"lib/modified_module.ex\n", 0}
+            true -> {"", 0}
+          end
+        end)
+
+        io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
+        assert io =~ "Coverage of new files:"
+        assert io =~ "NewModule"
+        assert io =~ "Coverage of modified files:"
+        assert io =~ "ModifiedModule"
+        refute io =~ "UnrelatedModule"
+      after
+        File.cd!(original_dir)
+      end
+    end
+
+    @tag :tmp_dir
+    test "on the base branch, diffs against HEAD~1 instead of an empty range", %{tmp_dir: tmp_dir} do
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        File.mkdir_p!(".check")
+        File.mkdir_p!("lib")
+
+        File.write!(".check/coverage_cache.txt", "| ModifiedModule | 74.00% |\n")
+        File.write!("lib/modified_module.ex", "defmodule ModifiedModule do\nend\n")
+
+        stub(Check.Config, :load, fn -> {:ok, %{}} end)
+        stub(Check.Config, :base_branch, fn _config -> "main" end)
+
+        # current branch == base branch ("main"), and a parent commit exists,
+        # so the diff must target HEAD~1 — never the empty "main...HEAD" range.
+        stub(System, :cmd, fn "git", args, _opts ->
+          cond do
+            args == ["rev-parse", "--abbrev-ref", "HEAD"] ->
+              {"main\n", 0}
+
+            args == ["rev-parse", "--verify", "--quiet", "HEAD~1"] ->
+              {"abc123\n", 0}
+
+            "--diff-filter=M" in args ->
+              assert "HEAD~1" in args
+              refute "main...HEAD" in args
+              {"lib/modified_module.ex\n", 0}
+
+            true ->
+              {"", 0}
+          end
+        end)
+
+        io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
+        assert io =~ "ModifiedModule"
+      after
+        File.cd!(original_dir)
+      end
+    end
+
+    @tag :tmp_dir
+    test "shows average percentage for each group", %{tmp_dir: tmp_dir} do
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        File.mkdir_p!(".check")
+        File.mkdir_p!("lib")
+
+        coverage_output = """
+        | ModA | 80.00% |
+        | ModB | 60.00% |
+        """
+
+        File.write!(".check/coverage_cache.txt", coverage_output)
+        File.write!("lib/mod_a.ex", "defmodule ModA do\nend\n")
+        File.write!("lib/mod_b.ex", "defmodule ModB do\nend\n")
+
+        stub(Check.Config, :load, fn -> {:ok, %{}} end)
+        stub(Check.Config, :base_branch, fn _config -> "main" end)
+
+        stub(System, :cmd, fn "git", args, _opts ->
+          cond do
+            args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+            "--diff-filter=A" in args -> {"", 0}
+            "--diff-filter=M" in args -> {"lib/mod_a.ex\nlib/mod_b.ex\n", 0}
+            true -> {"", 0}
+          end
+        end)
+
+        io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
+        assert io =~ "Average: 70.0%"
+      after
+        File.cd!(original_dir)
+      end
+    end
+  end
+
+  describe "maybe_merge_and_show_modified/0" do
+    test "does nothing when coverage mod is false" do
+      stub(Check.Config, :load, fn ->
+        {:ok, %{"coverage" => %{"mod" => "disabled"}}}
+      end)
+
+      stub(Check.Config, :parse_coverage, fn _c -> %{mod: false} end)
+      io = capture_io(fn -> Coverage.maybe_merge_and_show_modified() end)
+      assert io == ""
+    end
+
+    test "does nothing when config load fails" do
+      stub(Check.Config, :load, fn -> :error end)
+      io = capture_io(fn -> Coverage.maybe_merge_and_show_modified() end)
+      assert io == ""
+    end
+
+    @tag :tmp_dir
+    test "uses cache and shows modified coverage for native mod", %{tmp_dir: tmp_dir} do
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        File.mkdir_p!(".check")
+        File.mkdir_p!("cover")
+        File.mkdir_p!("lib")
+
+        coverdata_content = "fake_coverdata_for_modified"
+        File.write!("cover/modified.coverdata", coverdata_content)
+
+        hash =
+          :crypto.hash(:md5, coverdata_content) |> Base.encode16(case: :lower)
+
+        coverage_output = "| MyMod | 88.00% |\n"
+        File.write!(".check/coverage_cache.hash", hash)
+        File.write!(".check/coverage_cache.txt", coverage_output)
+        File.write!("lib/my_mod.ex", "defmodule MyMod do\nend\n")
+
+        stub(Check.Config, :load, fn ->
+          {:ok, %{"coverage" => %{"mod" => "native"}}}
+        end)
+
+        stub(Check.Config, :parse_coverage, fn _c ->
+          %{mod: :native, limit: nil, html: false, baseline_cmd: nil}
+        end)
+
+        stub(Check.Config, :base_branch, fn _config -> "main" end)
+
+        stub(System, :cmd, fn "git", args, _opts ->
+          cond do
+            args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+            "--diff-filter=A" in args -> {"lib/my_mod.ex\n", 0}
+            "--diff-filter=M" in args -> {"", 0}
+            true -> {"", 0}
+          end
+        end)
+
+        io = capture_io(fn -> Coverage.maybe_merge_and_show_modified() end)
+        assert io =~ "MyMod"
+      after
+        File.cd!(original_dir)
+      end
+    end
+  end
 end

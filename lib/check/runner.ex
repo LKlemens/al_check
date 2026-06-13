@@ -17,23 +17,36 @@ defmodule Check.Runner do
     {results, total_seconds}
   end
 
+  # No spinner here: the watch command streams a continuous `tail -f`, so a
+  # spinner would only flicker between output lines.
   def stream_port_output(port) do
-    spinner = Check.Spinner.start()
-    status = do_stream_port_output(port, spinner)
-    Check.Spinner.stop(spinner)
-    status
+    receive do
+      {^port, {:data, data}} ->
+        IO.binwrite(:stdio, data)
+        stream_port_output(port)
+
+      {^port, {:exit_status, status}} ->
+        status
+    end
   end
 
-  defp do_stream_port_output(port, spinner) do
+  def stream_and_capture_port(port) do
+    spinner = Check.Spinner.start()
+    {output, status} = do_stream_and_capture_port(port, "", spinner)
+    Check.Spinner.stop(spinner)
+    {status, output}
+  end
+
+  defp do_stream_and_capture_port(port, acc, spinner) do
     receive do
       {^port, {:data, data}} ->
         Check.Spinner.stop(spinner)
         IO.binwrite(:stdio, data)
         new_spinner = Check.Spinner.start()
-        do_stream_port_output(port, new_spinner)
+        do_stream_and_capture_port(port, acc <> data, new_spinner)
 
       {^port, {:exit_status, status}} ->
-        status
+        {acc, status}
     end
   end
 

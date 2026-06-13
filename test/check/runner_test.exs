@@ -39,6 +39,34 @@ defmodule Check.RunnerTest do
     end
   end
 
+  describe "stream_and_capture_port/1" do
+    test "streams to stdout and captures output" do
+      port =
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["captured_output"]
+        ])
+
+      io = capture_io(fn -> send(self(), Runner.stream_and_capture_port(port)) end)
+      assert io =~ "captured_output"
+      assert_received {0, output}
+      assert output =~ "captured_output"
+    end
+
+    test "returns non-zero exit status" do
+      port =
+        Port.open({:spawn_executable, System.find_executable("sh")}, [
+          :binary,
+          :exit_status,
+          args: ["-c", "exit 7"]
+        ])
+
+      capture_io(fn -> send(self(), Runner.stream_and_capture_port(port)) end)
+      assert_received {7, _}
+    end
+  end
+
   describe "stream_port_output/1" do
     test "streams and returns exit status" do
       port =
@@ -68,8 +96,7 @@ defmodule Check.RunnerTest do
 
   describe "builtin modules" do
     test "modified_tests returns status tuple" do
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {"", 0} end)
+      stub(System, :cmd, fn "git", _args, _opts -> {"", 0} end)
 
       io =
         capture_io(fn ->
@@ -82,8 +109,7 @@ defmodule Check.RunnerTest do
     end
 
     test "modified_test_modules returns status tuple" do
-      expect(System, :cmd, fn "git", ["rev-parse" | _], _opts -> {"", 0} end)
-      expect(System, :cmd, fn "git", ["diff", "--name-only" | _], _opts -> {"", 0} end)
+      stub(System, :cmd, fn "git", _args, _opts -> {"", 0} end)
 
       io =
         capture_io(fn ->

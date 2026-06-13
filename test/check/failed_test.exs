@@ -64,6 +64,26 @@ defmodule Check.FailedTest do
     test "returns empty when no matches" do
       assert Failed.extract_from_output("no warnings here") == []
     end
+
+    test "extracts doctest failures" do
+      output = """
+        1) doctest MyModule.some_function/1 (MyModule.DocTest)
+           test/my_module_test.exs:5
+           Doctest failed
+      """
+
+      assert Failed.extract_from_output(output) == ["test/my_module_test.exs:5"]
+    end
+
+    test "extracts property-based test failures" do
+      output = """
+        1) property generates valid output (MyModule.PropTest)
+           test/my_module_test.exs:15
+           Counterexample found
+      """
+
+      assert Failed.extract_from_output(output) == ["test/my_module_test.exs:15"]
+    end
   end
 
   describe "detect_warnings_in_output/1" do
@@ -89,6 +109,11 @@ defmodule Check.FailedTest do
 
     test "false when no coverage message" do
       refute Failed.coverage_threshold_failure?("10 tests, 0 failures")
+    end
+
+    test "detects alternative ExCoveralls threshold message" do
+      output = "10 tests, 0 failures\nCoverage test failed, threshold not met"
+      assert Failed.coverage_threshold_failure?(output)
     end
   end
 

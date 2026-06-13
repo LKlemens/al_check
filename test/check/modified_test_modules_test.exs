@@ -18,7 +18,7 @@ defmodule Check.ModifiedTestModulesTest do
           send(self(), ModifiedTestModules.run())
         end)
 
-      assert_received {0, ""}
+      assert_received {0, _}
       assert output =~ "No modified test files"
     end
 
@@ -45,7 +45,7 @@ defmodule Check.ModifiedTestModulesTest do
           send(self(), ModifiedTestModules.run())
         end)
 
-      assert_received {0, ""}
+      assert_received {0, _}
       assert output =~ "Test command"
       assert output =~ "1 modules"
     end

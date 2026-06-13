@@ -29,8 +29,10 @@ defmodule Check.Failed do
   end
 
   def extract_from_output(output) do
+    # Match all failure types: test, doctest, property, etc.
+    # Pattern: N) <anything>\n     test/path/file.exs:line
     failures =
-      ~r/\d+\)\s+test\s+.*?\n\s+(test\/[^\s:]+\.exs):(\d+)/m
+      ~r/\d+\)\s+.*?\n\s+(test\/[^\s:]+\.exs):(\d+)/m
       |> Regex.scan(output)
       |> Enum.map(fn [_, file, line] -> "#{file}:#{line}" end)
 
@@ -60,7 +62,8 @@ defmodule Check.Failed do
   end
 
   def coverage_threshold_failure?(output) do
-    String.contains?(output, "Expected minimum coverage") and
+    (String.contains?(output, "Expected minimum coverage") or
+       String.contains?(output, "Coverage test failed, threshold not met")) and
       Regex.match?(~r/\d+ tests?, 0 failures/, output)
   end
 
@@ -133,7 +136,7 @@ defmodule Check.Failed do
 
       if passed > 0 do
         IO.puts([
-          IO.ANSI.format([:green, "#{passed} test(s) now pass, removed from still-failing list"])
+          IO.ANSI.format([:yellow, "#{passed} test(s) now pass, removed from still-failing list"])
         ])
       end
 

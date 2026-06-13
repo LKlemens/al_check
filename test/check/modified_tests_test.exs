@@ -169,7 +169,7 @@ defmodule Check.ModifiedTestsTest do
       end)
 
       capture_io(fn -> send(self(), ModifiedTests.run()) end)
-      assert_received {0, ""}
+      assert_received {0, _}
     end
 
     @tag :tmp_dir
@@ -205,7 +205,7 @@ defmodule Check.ModifiedTestsTest do
       end)
 
       output = capture_io(fn -> send(self(), ModifiedTests.run()) end)
-      assert_received {0, ""}
+      assert_received {0, _}
       assert output =~ "module-level setup changed"
     end
 
@@ -239,7 +239,7 @@ defmodule Check.ModifiedTestsTest do
       end)
 
       capture_io(fn -> send(self(), ModifiedTests.run()) end)
-      assert_received {0, ""}
+      assert_received {0, _}
     end
   end
 
@@ -254,7 +254,7 @@ defmodule Check.ModifiedTestsTest do
           send(self(), ModifiedTests.run())
         end)
 
-      assert_received {0, ""}
+      assert_received {0, _}
       assert output =~ "No modified test files"
     end
 
@@ -296,7 +296,7 @@ defmodule Check.ModifiedTestsTest do
           send(self(), ModifiedTests.run())
         end)
 
-      assert_received {0, ""}
+      assert_received {0, _}
       assert output =~ "setup changed"
     end
 
@@ -336,7 +336,7 @@ defmodule Check.ModifiedTestsTest do
           send(self(), ModifiedTests.run())
         end)
 
-      assert_received {0, ""}
+      assert_received {0, _}
       assert output =~ ":6"
     end
   end

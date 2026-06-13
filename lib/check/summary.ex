@@ -21,7 +21,17 @@ defmodule Check.Summary do
     Failed.save((partition_failures ++ check_failures) |> Enum.uniq())
 
     coverage_failed? =
-      if Tasks.has_test_tasks?(tasks), do: Coverage.merge(coverage) == :failed, else: false
+      if Tasks.has_test_tasks?(tasks) do
+        result = Coverage.merge(coverage)
+
+        if coverage.mod != false do
+          Coverage.show_modified_files_coverage()
+        end
+
+        result == :failed
+      else
+        false
+      end
 
     failed_checks = Enum.filter(results, fn {_name, status, _output} -> status != 0 end)
 
