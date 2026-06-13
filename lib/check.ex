@@ -145,11 +145,7 @@ defmodule Check do
   end
 
   defp run_coverage(opts, config) do
-    coverage =
-      config["coverage"]
-      |> Config.parse_coverage()
-      |> Map.put(:full, opts[:full_coverage_output] || false)
-      |> then(&Map.put(&1, :html, opts[:with_html] || &1.html))
+    coverage = build_coverage(opts, config)
 
     if coverage.mod == false do
       IO.puts(:stderr, "Coverage not configured. Set \"coverage\" in .check.json")
@@ -162,6 +158,19 @@ defmodule Check do
     if result == :failed, do: System.halt(1)
   end
 
+  # Coverage settings from config, with CLI flags layered on top:
+  # `--no-coverage` disables it; `--full-coverage-output` / `--with-html` override.
+  defp build_coverage(opts, config) do
+    base =
+      if opts[:coverage] == false,
+        do: %{mod: false, limit: nil, html: false, baseline_cmd: nil},
+        else: Config.parse_coverage(config["coverage"])
+
+    base
+    |> Map.put(:full, opts[:full_coverage_output] || false)
+    |> Map.put(:html, opts[:with_html] || base.html)
+  end
+
   defp run_checks(opts, mock_mode, config) do
     partitions = opts[:partitions] || config["partitions"] || 3
     max_concurrency = config["max_concurrency"] || 10
@@ -169,13 +178,7 @@ defmodule Check do
     test_args = opts[:test_args] || config["test_args"]
     repeat = opts[:repeat]
 
-    coverage =
-      if opts[:coverage] == false,
-        do: %{mod: false, limit: nil, html: false, baseline_cmd: nil},
-        else: Config.parse_coverage(config["coverage"])
-
-    coverage = Map.put(coverage, :full, opts[:full_coverage_output] || false)
-    coverage = Map.put(coverage, :html, opts[:with_html] || coverage.html)
+    coverage = build_coverage(opts, config)
 
     partitions = if mock_mode, do: partitions, else: Tasks.cap_partitions(partitions, test_dir)
 
