@@ -33,12 +33,15 @@ jobs:
         version-file: .tool-versions
         version-type: strict
 
-    - name: Restore dependencies cache
-      uses: actions/cache@v3
+    - name: Restore deps and _build cache
+      uses: actions/cache@v4
       with:
-        path: deps
-        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
-        restore-keys: ${{ runner.os }}-deps-
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('.tool-versions', 'mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-
 
     - name: Install and compile dependencies
       run: |
@@ -101,12 +104,15 @@ jobs:
         version-file: .tool-versions
         version-type: strict
 
-    - name: Restore dependencies cache
-      uses: actions/cache@v3
+    - name: Restore deps and _build cache
+      uses: actions/cache@v4
       with:
-        path: deps
-        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
-        restore-keys: ${{ runner.os }}-deps-
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('.tool-versions', 'mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-
 
     - name: Install and compile dependencies
       run: |
@@ -252,12 +258,15 @@ jobs:
         version-file: .tool-versions
         version-type: strict
 
-    - name: Restore dependencies cache
-      uses: actions/cache@v3
+    - name: Restore deps and _build cache
+      uses: actions/cache@v4
       with:
-        path: deps
-        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
-        restore-keys: ${{ runner.os }}-deps-
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('.tool-versions', 'mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-
 
     - name: Install and compile dependencies
       run: |
@@ -291,12 +300,15 @@ jobs:
         version-file: .tool-versions
         version-type: strict
 
-    - name: Restore dependencies cache
-      uses: actions/cache@v3
+    - name: Restore deps and _build cache
+      uses: actions/cache@v4
       with:
-        path: deps
-        key: ${{ runner.os }}-deps-${{ hashFiles('mix.lock') }}
-        restore-keys: ${{ runner.os }}-deps-
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ hashFiles('.tool-versions', 'mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-
 
     - name: Install and compile dependencies
       run: |
@@ -305,11 +317,12 @@ jobs:
 
     - name: Restore PLT cache
       id: plt-cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: priv/plts
-        key: ${{ runner.os }}-plt-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-plt-
+        key: ${{ runner.os }}-plt-${{ hashFiles('.tool-versions', 'mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-plt-
 
     - name: Create PLTs
       if: steps.plt-cache.outputs.cache-hit != 'true'
