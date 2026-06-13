@@ -51,7 +51,15 @@ jobs:
     - name: Compile
       run: mix compile --warnings-as-errors
 
+    - name: Cache check escript
+      id: escript-cache
+      uses: actions/cache@v4
+      with:
+        path: scripts/check
+        key: ${{ runner.os }}-escript-${{ hashFiles('.tool-versions', 'mix.lock', 'mix.exs', 'lib/**/*.ex') }}
+
     - name: Build check escript
+      if: steps.escript-cache.outputs.cache-hit != 'true'
       run: mix escript.build
 
     - name: Upload check escript
