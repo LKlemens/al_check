@@ -66,7 +66,10 @@ defmodule Check.FixTest do
     test "runs recode on files from credo txt" do
       stub(Check.Config, :load, fn -> {:ok, %{}} end)
       stub(Path, :wildcard, fn ".check/credo*.txt" -> [".check/credo.txt"] end)
-      stub(File, :read!, fn ".check/credo.txt" -> "  ┃   lib/foo.ex:10:5\n  ┃   lib/bar.ex:20:3\n" end)
+
+      stub(File, :read!, fn ".check/credo.txt" ->
+        "  ┃   lib/foo.ex:10:5\n  ┃   lib/bar.ex:20:3\n"
+      end)
 
       expect(System, :cmd, fn "sh", ["-c", "mix format"], _opts -> {"", 0} end)
 

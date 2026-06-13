@@ -181,6 +181,7 @@ defmodule Check do
     if Tasks.has_test_tasks?(tasks) do
       Failed.save_test_args(test_args_with_cover(test_args, coverage))
       Path.wildcard(".check/test_partition_*.txt") |> Enum.each(&File.rm/1)
+      Path.wildcard("cover/*.coverdata") |> Enum.each(&File.rm/1)
     end
   end
 

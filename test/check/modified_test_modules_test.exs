@@ -124,7 +124,10 @@ defmodule Check.ModifiedTestModulesTest do
         end
       end)
 
-      stub(File, :exists?, fn "test/foo_test.exs" -> true; _path -> false end)
+      stub(File, :exists?, fn
+        "test/foo_test.exs" -> true
+        _path -> false
+      end)
 
       expect(Check.Port, :open, fn "mix", args ->
         assert "--warnings-as-errors" in args

@@ -410,7 +410,9 @@ defmodule Check.CoverageTest do
     end
 
     @tag :tmp_dir
-    test "links the module to its cover HTML report (Elixir.<Module>.html)", %{tmp_dir: tmp_dir} do
+    test "copies module HTML to .check/cover_modified/ when cover file exists", %{
+      tmp_dir: tmp_dir
+    } do
       original_dir = File.cwd!()
       File.cd!(tmp_dir)
 
@@ -421,7 +423,6 @@ defmodule Check.CoverageTest do
 
         File.write!(".check/coverage_cache.txt", "| ModifiedModule | 74.00% |\n")
         File.write!("lib/modified_module.ex", "defmodule ModifiedModule do\nend\n")
-        # Cover HTML uses the full BEAM module name.
         File.write!("cover/Elixir.ModifiedModule.html", "<html></html>")
 
         stub(Check.Config, :load, fn -> {:ok, %{}} end)
@@ -437,9 +438,9 @@ defmodule Check.CoverageTest do
 
         io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
 
-        # OSC 8 hyperlink pointing at the Elixir.-prefixed cover file.
-        assert io =~ "\e]8;;file://"
-        assert io =~ "cover/Elixir.ModifiedModule.html"
+        assert File.exists?(".check/cover_modified/Elixir.ModifiedModule.html")
+        assert io =~ "ModifiedModule"
+        refute io =~ "\e]8;;"
       after
         File.cd!(original_dir)
       end
@@ -560,6 +561,49 @@ defmodule Check.CoverageTest do
       after
         File.cd!(original_dir)
       end
+    end
+
+    @tag :tmp_dir
+    test "copies HTML files for new/modified modules to .check/cover_modified/", %{
+      tmp_dir: tmp_dir
+    } do
+      cover_dir = Path.join(tmp_dir, "cover")
+      lib_file = Path.join(tmp_dir, "lib/my_mod.ex")
+
+      File.mkdir_p!(Path.join(tmp_dir, ".check"))
+      File.mkdir_p!(cover_dir)
+      File.mkdir_p!(Path.dirname(lib_file))
+      File.write!(Path.join(cover_dir, "Elixir.MyMod.html"), "<html>MyMod</html>")
+      File.write!(Path.join(cover_dir, "cover.css"), "body {}")
+      File.write!(lib_file, "defmodule MyMod do\nend\n")
+
+      # Stub cwd so copy_modified_htmls resolves cover/ and .check/cover_modified/
+      # relative to tmp_dir without changing the global OS process cwd.
+      stub(File, :cwd!, fn -> tmp_dir end)
+
+      stub(File, :read, fn
+        ".check/coverage_cache.txt" -> {:ok, "| MyMod | 80.00% |\n"}
+        _path -> {:error, :enoent}
+      end)
+
+      stub(Check.Config, :load, fn -> {:ok, %{}} end)
+      stub(Check.Config, :base_branch, fn _config -> "main" end)
+
+      stub(System, :cmd, fn "git", args, _opts ->
+        cond do
+          args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+          "--diff-filter=A" in args -> {"", 0}
+          "--diff-filter=M" in args -> {lib_file <> "\n", 0}
+          true -> {"", 0}
+        end
+      end)
+
+      capture_io(fn -> Coverage.show_modified_files_coverage() end)
+
+      modified_dir = Path.join(tmp_dir, ".check/cover_modified")
+      assert File.exists?(Path.join(modified_dir, "Elixir.MyMod.html"))
+      assert File.exists?(Path.join(modified_dir, "cover.css"))
+      assert File.read!(Path.join(modified_dir, "Elixir.MyMod.html")) == "<html>MyMod</html>"
     end
   end
 

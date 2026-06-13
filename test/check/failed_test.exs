@@ -9,16 +9,28 @@ defmodule Check.FailedTest do
   setup do
     fs = start_supervised!({Agent, fn -> %{} end})
     stub(File, :mkdir_p!, fn _ -> :ok end)
-    stub(File, :write!, fn path, content -> Agent.update(fs, &Map.put(&1, path, content)); :ok end)
+
+    stub(File, :write!, fn path, content ->
+      Agent.update(fs, &Map.put(&1, path, content))
+      :ok
+    end)
+
     stub(File, :read!, fn path -> Agent.get(fs, &Map.fetch!(&1, path)) end)
+
     stub(File, :read, fn path ->
       case Agent.get(fs, &Map.get(&1, path)) do
         nil -> {:error, :enoent}
         content -> {:ok, content}
       end
     end)
+
     stub(File, :exists?, fn path -> Agent.get(fs, &Map.has_key?(&1, path)) end)
-    stub(File, :rm, fn path -> Agent.update(fs, &Map.delete(&1, path)); :ok end)
+
+    stub(File, :rm, fn path ->
+      Agent.update(fs, &Map.delete(&1, path))
+      :ok
+    end)
+
     :ok
   end
 

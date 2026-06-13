@@ -25,7 +25,11 @@ defmodule Check.WatchTest do
 
     test "starts watching when partition files exist" do
       stub_halt()
-      stub(Path, :wildcard, fn ".check/test_partition_*.txt" -> [".check/test_partition_1.txt"] end)
+
+      stub(Path, :wildcard, fn ".check/test_partition_*.txt" ->
+        [".check/test_partition_1.txt"]
+      end)
+
       stub(File, :mkdir_p!, fn _ -> :ok end)
       stub(File, :write!, fn _, _ -> :ok end)
 
