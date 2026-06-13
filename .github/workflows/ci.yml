@@ -70,6 +70,11 @@ jobs:
         BEST_COVERAGE=$(cat best_coverage.json | jq '.message' | sed -e 's/\"//g'  -e 's/%//g')
         BEST_COVERAGE=${BEST_COVERAGE:-0}
         echo "BEST_COVERAGE=${BEST_COVERAGE}" | tee -a $GITHUB_ENV
+        if [ -f module_coverage.json ]; then
+          cp module_coverage.json /tmp/baseline_module_coverage.json
+        else
+          echo '{}' > /tmp/baseline_module_coverage.json
+        fi
 
     - uses: actions/checkout@v4
       with:
@@ -136,6 +141,32 @@ jobs:
         echo "MSG=$MSG" | tee -a $GITHUB_ENV
         echo "LAST_LINE=$LAST_LINE" | tee -a $GITHUB_ENV
 
+    - name: Build per-module coverage diff
+      run: |
+        python3 .github/workflows/scripts/parse_coverage.py raport current_module_coverage.json
+
+        git diff --name-only origin/main...HEAD -- 'lib/**/*.ex' > modified_ex_files.txt || true
+
+        # Extract defmodule names from those files
+        > modified_modules.txt
+        while IFS= read -r file; do
+          if [ -f "$file" ]; then
+            grep -oP 'defmodule\s+\K[\w.]+' "$file" >> modified_modules.txt || true
+          fi
+        done < modified_ex_files.txt
+        sort -u modified_modules.txt -o modified_modules.txt
+
+        MODULE_DIFF=$(python3 .github/workflows/scripts/module_coverage_diff.py \
+          /tmp/baseline_module_coverage.json \
+          current_module_coverage.json \
+          modified_modules.txt)
+
+        # Store as multiline env var
+        EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64)
+        echo "MODULE_DIFF<<${EOF_MARKER}" >> $GITHUB_ENV
+        echo "${MODULE_DIFF}" >> $GITHUB_ENV
+        echo "${EOF_MARKER}" >> $GITHUB_ENV
+
     - name: Find Comment
       if: ${{ github.event_name == 'pull_request' }}
       uses: peter-evans/find-comment@v2
@@ -154,7 +185,10 @@ jobs:
         body: |
           ## Test Coverage Summary Statistics - ${{ env.TITLE }}
           __Coverage:__ ${{ env.COVERAGE }}: ${{ env.MSG }}
-           ${{ env.LAST_LINE }}
+          ${{ env.LAST_LINE }}
+
+          ### Modified modules coverage
+          ${{ env.MODULE_DIFF }}
         edit-mode: replace
 
     - uses: actions/checkout@v4
@@ -180,7 +214,8 @@ jobs:
           echo '{"schemaVersion":1,"label":"Test Coverage","message":"${{ env.COVERAGE }}%","color":"${{ env.COLOR }}","namedLogo":"jest"}' > best_coverage.json
           git add best_coverage.json || true
         fi
-        git add current_coverage.svg || true
+        cp current_module_coverage.json module_coverage.json
+        git add current_coverage.svg module_coverage.json || true
         git commit -m "update coverage ${{ env.COVERAGE }}%" || true
         git push
 
