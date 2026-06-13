@@ -27,3 +27,6 @@ al_check-*.tar
 
 # check's runtime/cache directory (failed tests, coverage cache, etc.).
 /.check/
+
+# Dialyzer PLT files (cached in CI; rebuilt locally).
+/priv/plts/
