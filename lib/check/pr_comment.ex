@@ -16,7 +16,9 @@ defmodule Check.PRComment do
       "+0.00% ✅"
   """
   @spec format_delta(float()) :: String.t()
-  def format_delta(delta) when delta >= 0, do: "+#{:erlang.float_to_binary(delta, decimals: 2)}% ✅"
+  def format_delta(delta) when delta >= 0,
+    do: "+#{:erlang.float_to_binary(delta, decimals: 2)}% ✅"
+
   def format_delta(delta), do: "#{:erlang.float_to_binary(delta, decimals: 2)}% ❌"
 
   @doc """
