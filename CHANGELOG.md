@@ -17,10 +17,10 @@
 - `check --coverage` now also reports coverage of new/modified modules
   (the per-file "new files" / "modified files" breakdown), matching the
   full run
+- `--full-coverage-output` flag prints the entire per-module coverage table
+  (otherwise only the total and the new/modified breakdown are shown)
 
 ### Changed
-- Coverage summary line now prints a clickable `file://…/index.html` link to
-  the HTML report instead of the bare `Report: cover/` directory path
 - `modified_tests` no longer reports coverage: it runs only the selected
   test lines, so per-file coverage numbers were misleadingly low.
   `modified_test_modules` (whole files) still reports coverage

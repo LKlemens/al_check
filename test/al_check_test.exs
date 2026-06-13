@@ -158,6 +158,18 @@ defmodule AlCheckTest do
   end
 
   describe "--no-coverage" do
+    # Run in an isolated cwd: these mock runs write .check/test_args.txt, which
+    # would otherwise clobber the real project's snapshot (e.g. dropping --cover
+    # mid-run under `check --only test`, breaking a later `check --failed`).
+    @describetag :tmp_dir
+
+    setup %{tmp_dir: tmp_dir} do
+      cwd = File.cwd!()
+      File.cd!(tmp_dir)
+      on_exit(fn -> File.cd!(cwd) end)
+      :ok
+    end
+
     test "runs tests without coverage" do
       output =
         capture_io(fn ->
@@ -177,6 +189,39 @@ defmodule AlCheckTest do
 
       assert output =~ "All checks passed"
       refute output =~ "Merging coverage"
+    end
+  end
+
+  describe "--full-coverage-output" do
+    @describetag :tmp_dir
+
+    setup %{tmp_dir: tmp_dir} do
+      cwd = File.cwd!()
+      File.cd!(tmp_dir)
+      on_exit(fn -> File.cd!(cwd) end)
+      :ok
+    end
+
+    test "standalone implies the coverage command" do
+      stub(System, :halt, fn code -> throw({:halted, code}) end)
+
+      # No .check.json in the tmp cwd → coverage not configured. Reaching that
+      # message proves it routed to the :coverage command, not :checks.
+      stderr =
+        capture_io(:stderr, fn ->
+          capture_io(fn -> catch_throw(Check.main(["--full-coverage-output"])) end)
+        end)
+
+      assert stderr =~ "Coverage not configured"
+    end
+
+    test "stays a modifier when combined with --only" do
+      output =
+        capture_io(fn ->
+          Check.main(["--only", "test", "--full-coverage-output", "--partitions", "1", "mock"])
+        end)
+
+      assert output =~ "All checks passed"
     end
   end
 
