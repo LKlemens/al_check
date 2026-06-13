@@ -193,29 +193,16 @@ defmodule Check.ModifiedTests do
       ])
     ])
 
-    clean_coverdata()
     port = Check.Port.open("mix", args)
-    {status, output} = Check.Runner.stream_and_capture_port(port)
-    status = if Check.Failed.coverage_threshold_failure?(output), do: 0, else: status
-    if status == 0, do: Check.Coverage.maybe_merge_and_show_modified()
-    {status, output}
+    Check.Runner.stream_and_capture_port(port)
   end
 
+  # Coverage is intentionally not reported here: modified_tests runs only the
+  # selected test lines, so per-file coverage would be misleadingly low.
+  # See Check.ModifiedTestModules for the whole-file path that does report it.
   defp extra_args(opts) do
     test_args = if opts[:test_args], do: String.split(opts[:test_args]), else: []
     repeat = if opts[:repeat], do: ["--repeat-until-failure", to_string(opts[:repeat])], else: []
-    cover = if coverage_enabled?(), do: ["--cover", "--export-coverage", "modified"], else: []
-    (test_args -- ["--cover"]) ++ repeat ++ cover
-  end
-
-  defp clean_coverdata do
-    Path.wildcard("cover/*.coverdata") |> Enum.each(&File.rm/1)
-  end
-
-  defp coverage_enabled? do
-    case Check.Config.load() do
-      {:ok, config} -> Check.Config.parse_coverage(config["coverage"]).mod != false
-      _ -> false
-    end
+    test_args ++ repeat
   end
 end

@@ -14,6 +14,11 @@
   changes (vs. base branch) are considered; uncommitted/working-tree
   changes are ignored
 
+### Changed
+- `modified_tests` no longer reports coverage: it runs only the selected
+  test lines, so per-file coverage numbers were misleadingly low.
+  `modified_test_modules` (whole files) still reports coverage
+
 ### Fixed
 - Failure detection regex now matches doctests and property-based test
   failures, not only regular `test` blocks
