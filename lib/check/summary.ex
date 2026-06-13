@@ -20,14 +20,17 @@ defmodule Check.Summary do
 
     Failed.save((partition_failures ++ check_failures) |> Enum.uniq())
 
+    # Skip coverage when tests failed: the numbers would be incomplete and
+    # misleading. A threshold-only failure (tests passed) still reports.
+    tests_failed? =
+      Enum.any?(results, fn {name, status, _output} ->
+        String.starts_with?(name, "Tests (") and status != 0
+      end)
+
     coverage_failed? =
-      if Tasks.has_test_tasks?(tasks) do
+      if Tasks.has_test_tasks?(tasks) and coverage.mod != false and not tests_failed? do
         result = Coverage.merge(coverage)
-
-        if coverage.mod != false do
-          Coverage.show_modified_files_coverage()
-        end
-
+        Coverage.show_modified_files_coverage()
         result == :failed
       else
         false

@@ -90,7 +90,7 @@ defmodule Check.ModifiedTestModules do
 
     case System.cmd(
            "git",
-           ["diff", "--name-only", "--diff-filter=d"] ++ range ++ ["--", "test/**/*_test.exs"],
+           ["diff", "--name-only", "--diff-filter=d"] ++ range ++ ["--", ":(glob)test/**/*_test.exs"],
            stderr_to_stdout: true
          ) do
       {output, 0} ->

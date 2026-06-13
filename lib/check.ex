@@ -142,10 +142,10 @@ defmodule Check do
       System.halt(1)
     end
 
-    case Coverage.merge(coverage) do
-      :failed -> System.halt(1)
-      :ok -> :ok
-    end
+    result = Coverage.merge(coverage)
+    Coverage.show_modified_files_coverage()
+
+    if result == :failed, do: System.halt(1)
   end
 
   defp run_checks(opts, mock_mode, config) do

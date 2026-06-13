@@ -302,9 +302,11 @@ defmodule Check.Coverage do
   end
 
   defp run_name_diff(revision, filter) do
+    # `:(glob)` magic is required for `**` to span directories; a plain
+    # `lib/**/*.ex` pathspec silently matches nothing for top-level files.
     case System.cmd(
            "git",
-           ["diff", "--name-only", "--diff-filter=#{filter}", revision, "--", "lib/**/*.ex"],
+           ["diff", "--name-only", "--diff-filter=#{filter}", revision, "--", ":(glob)lib/**/*.ex"],
            stderr_to_stdout: true
          ) do
       {output, 0} -> String.split(output, "\n", trim: true)
@@ -324,12 +326,18 @@ defmodule Check.Coverage do
     end
   end
 
-  defp filter_coverage_lines(output, patterns) do
+  # Match the module cell exactly — a substring match would make a top-level
+  # module like "Check" pull in every "Check.*" row.
+  defp filter_coverage_lines(output, modules) do
+    module_set = MapSet.new(modules)
+
     output
     |> String.split("\n")
     |> Enum.filter(fn line ->
-      String.contains?(line, "|") and
-        Enum.any?(patterns, fn pattern -> String.contains?(line, pattern) end)
+      case Regex.run(~r/\|\s*([\w.]+)\s*\|/, line) do
+        [_, module] -> MapSet.member?(module_set, module)
+        _ -> false
+      end
     end)
   end
 

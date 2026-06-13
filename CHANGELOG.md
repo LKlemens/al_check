@@ -13,6 +13,9 @@
 - Modified-test runs now print a note clarifying that only committed
   changes (vs. base branch) are considered; uncommitted/working-tree
   changes are ignored
+- `check --coverage` now also reports coverage of new/modified modules
+  (the per-file "new files" / "modified files" breakdown), matching the
+  full run
 
 ### Changed
 - `modified_tests` no longer reports coverage: it runs only the selected
@@ -30,6 +33,16 @@
   base branch: the three-dot `base...HEAD` diff collapses to nothing on
   the base branch, so it now diffs against `HEAD~1` there (and includes
   uncommitted working-tree changes on feature branches)
+- New/modified file detection now matches top-level files: the git pathspec
+  `lib/**/*.ex` (and `test/**/*_test.exs`) silently matched nothing for files
+  directly under `lib/`/`test/` (e.g. `lib/check.ex`); switched to `:(glob)`
+  magic so `**` spans zero or more directories. This is why the per-file
+  coverage breakdown could come back empty
+- Per-file coverage breakdown now matches module names exactly, so a
+  top-level module like `Check` no longer pulls in every `Check.*` row
+- `check --coverage` and the full run now show the new/modified breakdown on
+  a coverage-threshold failure too, but suppress it when tests failed (the
+  coverage numbers would be incomplete and misleading)
 - `modified_tests` and `modified_test_modules` now work on the base branch:
   the same empty `base...HEAD` range meant `check --only modified_test_modules`
   found nothing on `main`; they now compare against the latest commit

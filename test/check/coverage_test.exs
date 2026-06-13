@@ -387,6 +387,46 @@ defmodule Check.CoverageTest do
     end
 
     @tag :tmp_dir
+    test "matches module names exactly so a top-level module excludes its submodules",
+         %{tmp_dir: tmp_dir} do
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        File.mkdir_p!(".check")
+        File.mkdir_p!("lib")
+
+        coverage_output = """
+        |     84.07% | Check          |
+        |     86.23% | Check.Coverage |
+        |     90.38% | Check.Config   |
+        | Total          |  80.00% |
+        """
+
+        File.write!(".check/coverage_cache.txt", coverage_output)
+        File.write!("lib/check.ex", "defmodule Check do\nend\n")
+
+        stub(Check.Config, :load, fn -> {:ok, %{}} end)
+        stub(Check.Config, :base_branch, fn _config -> "main" end)
+
+        stub(System, :cmd, fn "git", args, _opts ->
+          cond do
+            args == ["rev-parse", "--abbrev-ref", "HEAD"] -> {"feature\n", 0}
+            "--diff-filter=M" in args -> {"lib/check.ex\n", 0}
+            true -> {"", 0}
+          end
+        end)
+
+        io = capture_io(fn -> Coverage.show_modified_files_coverage() end)
+        assert io =~ "84.07%"
+        refute io =~ "86.23%"
+        refute io =~ "90.38%"
+      after
+        File.cd!(original_dir)
+      end
+    end
+
+    @tag :tmp_dir
     test "on the base branch, diffs against HEAD~1 instead of an empty range", %{tmp_dir: tmp_dir} do
       original_dir = File.cwd!()
       File.cd!(tmp_dir)
