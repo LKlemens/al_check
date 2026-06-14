@@ -117,6 +117,33 @@ defmodule Check.Summary do
     end
   end
 
+  @doc """
+  Formats elapsed seconds into a human-readable string.
+
+  ## Examples
+
+      iex> Check.Summary.format_duration(0)
+      "0s"
+
+      iex> Check.Summary.format_duration(75)
+      "1m 15s"
+
+      iex> Check.Summary.format_duration(3600)
+      "1h 0m 0s"
+  """
+  @spec format_duration(non_neg_integer()) :: String.t()
+  def format_duration(seconds) when seconds < 60, do: "#{seconds}s"
+
+  def format_duration(seconds) when seconds < 3600 do
+    "#{div(seconds, 60)}m #{rem(seconds, 60)}s"
+  end
+
+  def format_duration(seconds) do
+    h = div(seconds, 3600)
+    remaining = rem(seconds, 3600)
+    "#{h}h #{div(remaining, 60)}m #{rem(remaining, 60)}s"
+  end
+
   defp save_credo_outputs(results) do
     File.mkdir_p!(".check")
 

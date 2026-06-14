@@ -40,7 +40,9 @@ defmodule Check.TasksTest do
 
     test "divides schedulers by partitions" do
       schedulers = :erlang.system_info(:schedulers_online)
-      assert Tasks.test_procs(2) == floor(schedulers / 2)
+      # Mirror the implementation's floor-of-1: on a single-scheduler host
+      # floor(1 / 2) == 0, but test_procs/1 never returns less than 1.
+      assert Tasks.test_procs(2) == max(floor(schedulers / 2), 1)
     end
   end
 

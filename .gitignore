@@ -21,3 +21,12 @@ al_check-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# The check escript build output (built via "mix escript.build" / "mix check.build").
+/scripts/
+
+# check's runtime/cache directory (failed tests, coverage cache, etc.).
+/.check/
+
+# Dialyzer PLT files (cached in CI; rebuilt locally).
+/priv/plts/

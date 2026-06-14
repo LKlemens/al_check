@@ -1,0 +1,2 @@
+defmodule FooTest do
+end

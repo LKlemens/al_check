@@ -14,6 +14,8 @@ defmodule AlCheck.MixProject do
       test_coverage: [ignore_modules: [Check.Port]],
       dialyzer: [
         plt_add_apps: [:mix],
+        plt_local_path: "priv/plts",
+        plt_core_path: "priv/plts",
         ignore_warnings: ".dialyzer_ignore.exs"
       ],
       escript: [
