@@ -1,5 +1,5 @@
-<svg width="141.6" height="20" viewBox="0 0 1416 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Test coverage: 91.80%">
-  <title>Test coverage: 91.80%</title>
+<svg width="141.6" height="20" viewBox="0 0 1416 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Test coverage: 92.05%">
+  <title>Test coverage: 92.05%</title>
   <linearGradient id="a" x2="0" y2="100%">
     <stop offset="0" stop-opacity=".1" stop-color="#EEE"/>
     <stop offset="1" stop-opacity=".1"/>
@@ -7,14 +7,14 @@
   <mask id="m"><rect width="1416" height="200" rx="30" fill="#FFF"/></mask>
   <g mask="url(#m)">
     <rect width="876" height="200" fill="#555"/>
-    <rect width="540" height="200" fill="#brightgreen" x="876"/>
+    <rect width="540" height="200" fill="#4c1" x="876"/>
     <rect width="1416" height="200" fill="url(#a)"/>
   </g>
   <g aria-hidden="true" fill="#fff" text-anchor="start" font-family="Verdana,DejaVu Sans,sans-serif" font-size="110">
     <text x="60" y="148" textLength="776" fill="#000" opacity="0.25">Test coverage</text>
     <text x="50" y="138" textLength="776">Test coverage</text>
-    <text x="931" y="148" textLength="440" fill="#000" opacity="0.25">91.80%</text>
-    <text x="921" y="138" textLength="440">91.80%</text>
+    <text x="931" y="148" textLength="440" fill="#000" opacity="0.25">92.05%</text>
+    <text x="921" y="138" textLength="440">92.05%</text>
   </g>
   
 </svg>
