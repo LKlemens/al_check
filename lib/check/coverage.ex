@@ -171,7 +171,7 @@ defmodule Check.Coverage do
         coverage = Check.Config.parse_coverage(config["coverage"])
 
         if coverage.mod != false do
-          # merge without threshold/baseline — just collect the data
+          # merge without threshold/baseline - just collect the data
           merge_silent(coverage)
           show_modified_files_coverage()
         end
@@ -190,7 +190,7 @@ defmodule Check.Coverage do
 
       :miss ->
         port = Check.Port.open("mix", ["test.coverage"])
-        # collect all output silently — don't print anything
+        # collect all output silently - don't print anything
         {output, _status} = collect_port_until_exit(port, "")
         write_cache(current_hash, output)
     end
@@ -362,7 +362,7 @@ defmodule Check.Coverage do
     end
   end
 
-  # Match the module cell exactly — a substring match would make a top-level
+  # Match the module cell exactly - a substring match would make a top-level
   # module like "Check" pull in every "Check.*" row.
   defp filter_coverage_lines(output, modules) do
     module_set = MapSet.new(modules)

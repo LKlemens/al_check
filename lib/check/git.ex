@@ -1,7 +1,7 @@
 defmodule Check.Git do
   @moduledoc "Helpers for resolving git diff ranges relative to the base branch."
 
-  # SHA of git's empty tree object — used to diff a root commit that has no parent.
+  # SHA of git's empty tree object - used to diff a root commit that has no parent.
   @empty_tree "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
   @doc """

@@ -68,4 +68,4 @@ See [Workflows](workflows.md) for details.
 
 ## Further reading
 
-- [Running tests in partitions](https://klemens.blog/blog/tests-in-partitions/) — background behind this approach.
+- [Running tests in partitions](https://klemens.blog/blog/tests-in-partitions/) - background behind this approach.

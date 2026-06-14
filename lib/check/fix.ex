@@ -1,5 +1,5 @@
 defmodule Check.Fix do
-  @moduledoc "Auto-fix mode — runs configurable fix commands."
+  @moduledoc "Auto-fix mode - runs configurable fix commands."
 
   @default_fix [
     %{"run" => "mix format"},

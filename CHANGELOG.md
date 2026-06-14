@@ -9,7 +9,7 @@
 - Per-module HTML coverage reports for new/modified files are copied to
   `.check/cover_modified/` (together with the shared CSS/JS assets so they
   render standalone), and a `file://` link to that directory is printed
-- `Runner.stream_and_capture_port/1` — streams port output to stdout
+- `Runner.stream_and_capture_port/1` - streams port output to stdout
   while also capturing it for downstream inspection
 - Modified-test runs now print a note clarifying that only committed
   changes (vs. base branch) are considered; uncommitted/working-tree

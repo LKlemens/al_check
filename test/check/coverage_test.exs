@@ -1,5 +1,5 @@
 defmodule Check.CoverageTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Mimic
 
   import ExUnit.CaptureIO
@@ -17,7 +17,7 @@ defmodule Check.CoverageTest do
     ])
   end
 
-  # Stubs for native merge tests — one fake coverdata file, no cache on disk.
+  # Stubs for native merge tests - one fake coverdata file, no cache on disk.
   defp stub_coverdata(content \\ "fake") do
     stub(Path, :wildcard, fn "cover/*.coverdata" -> ["cover/fake.coverdata"] end)
     stub(File, :read!, fn "cover/fake.coverdata" -> content end)
@@ -26,7 +26,7 @@ defmodule Check.CoverageTest do
     stub(File, :mkdir_p!, fn _path -> :ok end)
   end
 
-  # In-memory filesystem backed by an Agent — captures writes and serves them
+  # In-memory filesystem backed by an Agent - captures writes and serves them
   # back on reads. Used for tests that verify caching behaviour.
   defp start_mem_fs do
     fs = start_supervised!({Agent, fn -> %{} end})
@@ -309,7 +309,7 @@ defmodule Check.CoverageTest do
       stub(File, :read!, fn "cover/fake.coverdata" -> "fake_data" end)
       start_mem_fs()
 
-      # First call — cache miss, runs port
+      # First call - cache miss, runs port
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     92.00% | Total        |")
       end)
@@ -318,7 +318,7 @@ defmodule Check.CoverageTest do
         Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil})
       end)
 
-      # Second call — cache hit, no port call expected (no expect = fails if called)
+      # Second call - cache hit, no port call expected (no expect = fails if called)
       io =
         capture_io(fn ->
           send(
@@ -366,7 +366,7 @@ defmodule Check.CoverageTest do
         Coverage.merge(%{mod: :native, limit: nil, html: false, baseline_cmd: nil})
       end)
 
-      # Second call — coverdata changed, hash differs → cache miss → port runs again
+      # Second call - coverdata changed, hash differs → cache miss → port runs again
       expect(Check.Port, :open, fn "mix", ["test.coverage"] ->
         echo_port("|     80.00% | Total        |")
       end)

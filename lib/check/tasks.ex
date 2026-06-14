@@ -26,7 +26,7 @@ defmodule Check.Tasks do
     if Map.has_key?(checks_config, "test") do
       IO.puts(
         :stderr,
-        "Warning: \"test\" in checks is ignored — use \"test_args\" or --test-args to configure test command"
+        "Warning: \"test\" in checks is ignored -- use \"test_args\" or --test-args to configure test command"
       )
     end
 

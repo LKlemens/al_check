@@ -12,8 +12,8 @@ check --failed --repeat 10  # Re-run with repeat
 ```
 
 AlCheck maintains two files:
-- `.check/failed_tests.txt` — original full list from the last check run (never modified by `--failed`)
-- `.check/still_failing.txt` — updated after each `--failed` run, contains only tests that still fail
+- `.check/failed_tests.txt` - original full list from the last check run (never modified by `--failed`)
+- `.check/still_failing.txt` - updated after each `--failed` run, contains only tests that still fail
 
 `--failed` reads from `still_failing.txt` (falls back to `failed_tests.txt` if it doesn't exist).
 As tests pass, they are removed from the still-failing list. When all pass, `still_failing.txt` is deleted.

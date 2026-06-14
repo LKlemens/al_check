@@ -44,7 +44,7 @@ defmodule Check.ModifiedTestModules do
         clean_coverdata()
         port = Check.Port.open("mix", args)
         {status, output} = Check.Runner.stream_and_capture_port(port)
-        # ignore coverage threshold failure — we show modified coverage separately
+        # ignore coverage threshold failure - we show modified coverage separately
         status = if Check.Failed.coverage_threshold_failure?(output), do: 0, else: status
         if status == 0, do: Check.Coverage.maybe_merge_and_show_modified()
         {status, output}
