@@ -246,10 +246,13 @@ jobs:
         if (( $(bc <<< "${COVERAGE} > ${{ env.BEST_COVERAGE }}") )); then
           echo '{"schemaVersion":1,"label":"Test Coverage","message":"${{ env.COVERAGE }}%","color":"${{ env.COLOR }}","namedLogo":"jest"}' > best_coverage.json
           git add best_coverage.json || true
+          msg="update coverage ${COVERAGE}%"
+        else
+          msg="update module coverage"
         fi
         cp current_module_coverage.json module_coverage.json
         git add current_coverage.svg module_coverage.json || true
-        git commit -m "update coverage ${{ env.COVERAGE }}%" || true
+        git commit -m "$msg" || true
         git push
 
   static_code_analysis:
