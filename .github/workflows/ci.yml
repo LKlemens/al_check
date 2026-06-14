@@ -16,6 +16,7 @@ concurrency:
 
 env:
   MIX_ENV: test
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
