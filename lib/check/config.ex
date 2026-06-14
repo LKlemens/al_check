@@ -168,26 +168,6 @@ defmodule Check.Config do
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  @doc """
-  Returns `true` when the given check key is a builtin.
-
-  ## Examples
-
-      iex> Check.Config.builtin_check?(%{"run" => "builtin:modified_tests"})
-      true
-
-      iex> Check.Config.builtin_check?(%{"run" => "mix test"})
-      false
-  """
-  @spec builtin_check?(map()) :: boolean()
-  def builtin_check?(%{"run" => "builtin:" <> _}), do: true
-  def builtin_check?(_), do: false
-
-  @doc "Returns the check keys defined in `config`, or the defaults if absent."
-  @spec check_keys(map()) :: [String.t()]
-  def check_keys(%{"checks" => checks}) when is_map(checks), do: Map.keys(checks)
-  def check_keys(_), do: Map.keys(@default_checks)
-
   @known_keys ~w(run fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix db_setup db_drop update)
   @known_coverage_keys ~w(mod limit html baseline_cmd)
   @known_check_keys ~w(name run)

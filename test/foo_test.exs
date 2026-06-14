@@ -1,2 +1,0 @@
-defmodule FooTest do
-end

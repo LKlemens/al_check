@@ -209,16 +209,6 @@ defmodule Check.ConfigTest do
     end
   end
 
-  describe "builtin_check?/1" do
-    test "returns true for builtin run" do
-      assert Config.builtin_check?(%{"run" => "builtin:modified_tests"})
-    end
-
-    test "returns false for shell run" do
-      refute Config.builtin_check?(%{"run" => "mix test"})
-    end
-  end
-
   describe "init/0" do
     @tag :tmp_dir
     test "creates .check.json with valid json", %{tmp_dir: tmp_dir} do
