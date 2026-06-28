@@ -135,21 +135,25 @@ defmodule Check.Failed do
 
   defp maybe_show_coverage(_coverage, _full_list?), do: :ok
 
-  # Stream output to stdout and capture it for failure extraction
+  # Stream output to stdout and capture it for failure extraction. The spinner is
+  # stopped before each chunk is written and restarted after, so its line-clearing
+  # escapes never clobber streamed output.
   defp stream_and_capture(port) do
     spinner = Check.Spinner.start()
-    {output, status} = do_stream_and_capture(port, "")
-    Check.Spinner.stop(spinner)
+    {output, status} = do_stream_and_capture(port, "", spinner)
     {status, output}
   end
 
-  defp do_stream_and_capture(port, acc) do
+  defp do_stream_and_capture(port, acc, spinner) do
     receive do
       {^port, {:data, data}} ->
+        Check.Spinner.stop(spinner)
         IO.binwrite(:stdio, data)
-        do_stream_and_capture(port, acc <> data)
+        new_spinner = Check.Spinner.start()
+        do_stream_and_capture(port, acc <> data, new_spinner)
 
       {^port, {:exit_status, status}} ->
+        Check.Spinner.stop(spinner)
         {acc, status}
     end
   end

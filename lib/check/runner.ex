@@ -33,7 +33,6 @@ defmodule Check.Runner do
   def stream_and_capture_port(port) do
     spinner = Check.Spinner.start()
     {output, status} = do_stream_and_capture_port(port, "", spinner)
-    Check.Spinner.stop(spinner)
     {status, output}
   end
 
@@ -46,6 +45,7 @@ defmodule Check.Runner do
         do_stream_and_capture_port(port, acc <> data, new_spinner)
 
       {^port, {:exit_status, status}} ->
+        Check.Spinner.stop(spinner)
         {acc, status}
     end
   end

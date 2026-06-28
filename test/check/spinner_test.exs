@@ -12,7 +12,9 @@ defmodule Check.SpinnerTest do
     refute Process.alive?(pid)
   end
 
-  test "stop clears spinner line" do
+  test "does not write spinner output when stdout is not a tty" do
+    # Captured IO is not an interactive terminal, so the spinner must stay silent
+    # rather than leaving `⠙ Loading` escape leftovers in piped/CI logs.
     output =
       ExUnit.CaptureIO.capture_io(fn ->
         pid = Spinner.start("Loading")
@@ -20,7 +22,6 @@ defmodule Check.SpinnerTest do
         Spinner.stop(pid)
       end)
 
-    # spinner should have printed something
-    assert output =~ "Loading"
+    assert output == ""
   end
 end
