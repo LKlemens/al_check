@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.24] - 2026-06-28
+
+### Added
+- Coverage report after a passing `check --failed` / `--all-failed`: when the
+  re-run goes green, coverage is merged and the new/modified-file breakdown is
+  shown, just like a full run. Gated only on coverage being configured
+  (`coverage.mod`); `--no-coverage` skips it
+- The report is shown only when the *complete* failed set ran — `--all-failed`,
+  or the first `--failed` before any `.check/still_failing.txt` exists. A later
+  `--failed` re-runs only the still-failing subset (which overwrites
+  `cover/failed.coverdata` with partial data), so it instead prints a hint to
+  re-run `check --all-failed` for a full report
+
+### Fixed
+- Spinner no longer animates when stdout is not a TTY (piped/redirected to a
+  file or CI log): the cursor-control escapes were no-ops there, so every frame
+  piled up as literal `⠙ Running` leftovers. It now detects a terminal via
+  `:io.columns/0` and stays silent otherwise
+- Spinner no longer leaks past the streamed run into later output (e.g. the
+  coverage merge): the live spinner is now stopped when the port exits, in both
+  `Check.Failed` and `Check.Runner` streamers, instead of only the original
+  (already-stopped) one
+
 ## [0.1.23] - 2026-06-13
 
 ### Added
