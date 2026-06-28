@@ -125,7 +125,10 @@ defmodule Check do
   defp run_command(:init, _opts, _mock, _config), do: Config.init()
   defp run_command(:help, _opts, _mock, _config), do: print_help()
   defp run_command(:watch, _opts, _mock, _config), do: Watch.run()
-  defp run_command(:failed, opts, _mock, _config), do: Failed.run(opts)
+
+  defp run_command(:failed, opts, _mock, config),
+    do: Failed.run(opts, build_coverage(opts, config))
+
   defp run_command(:coverage, opts, _mock, config), do: run_coverage(opts, config)
   defp run_command(:partitions, opts, _mock, config), do: run_partition_cmd(opts, config)
   defp run_command(:fix, _opts, _mock, _config), do: Fix.run()

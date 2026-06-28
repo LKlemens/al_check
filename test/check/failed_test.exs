@@ -307,6 +307,84 @@ defmodule Check.FailedTest do
     end
   end
 
+  describe "coverage on pass" do
+    defp passing_port do
+      expect(Check.Port, :open, fn "mix", _args ->
+        Port.open({:spawn_executable, System.find_executable("echo")}, [
+          :binary,
+          :exit_status,
+          args: ["ok"]
+        ])
+      end)
+    end
+
+    defp native_coverage, do: %{mod: :native, limit: nil, html: false}
+
+    test "--all-failed shows coverage report on pass" do
+      File.write!(".check/failed_tests.txt", "test/a.exs:1")
+      Failed.save_test_args("--cover")
+      passing_port()
+
+      expect(Check.Coverage, :merge, fn _coverage -> :ok end)
+      stub(Check.Coverage, :show_modified_files_coverage, fn -> :ok end)
+
+      ExUnit.CaptureIO.capture_io(fn ->
+        Failed.run([all_failed: true], native_coverage())
+      end)
+    end
+
+    test "first --failed (no still_failing) shows coverage report on pass" do
+      File.write!(".check/failed_tests.txt", "test/a.exs:1")
+      Failed.save_test_args("--cover")
+      passing_port()
+
+      expect(Check.Coverage, :merge, fn _coverage -> :ok end)
+      stub(Check.Coverage, :show_modified_files_coverage, fn -> :ok end)
+
+      ExUnit.CaptureIO.capture_io(fn ->
+        Failed.run([failed: true], native_coverage())
+      end)
+    end
+
+    test "later --failed (still_failing exists) shows info hint, not a report" do
+      File.write!(".check/failed_tests.txt", "test/a.exs:1\ntest/b.exs:2")
+      File.write!(".check/still_failing.txt", "test/a.exs:1")
+      Failed.save_test_args("--cover")
+      passing_port()
+
+      reject(&Check.Coverage.merge/1)
+
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          Failed.run([failed: true], native_coverage())
+        end)
+
+      assert output =~ "Run `check --all-failed`"
+    end
+
+    test "does nothing when coverage mod is disabled" do
+      File.write!(".check/failed_tests.txt", "test/a.exs:1")
+      Failed.save_test_args("--warnings-as-errors")
+      passing_port()
+
+      reject(&Check.Coverage.merge/1)
+
+      ExUnit.CaptureIO.capture_io(fn ->
+        Failed.run([all_failed: true], %{mod: false})
+      end)
+    end
+
+    test "run/1 defaults to no coverage" do
+      File.write!(".check/failed_tests.txt", "test/a.exs:1")
+      Failed.save_test_args("--warnings-as-errors")
+      passing_port()
+
+      reject(&Check.Coverage.merge/1)
+
+      ExUnit.CaptureIO.capture_io(fn -> Failed.run([]) end)
+    end
+  end
+
   describe "still_failing.txt" do
     test "on success deletes still_failing.txt" do
       File.write!(".check/failed_tests.txt", "test/foo_test.exs:10")

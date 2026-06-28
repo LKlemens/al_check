@@ -17,7 +17,7 @@ A parallel code quality checker for Elixir projects. Runs format, compile, credo
 - **Test Partitioning** - splits test suite across multiple partitions
 - **Coverage Merging** - combines partition coverage into a single report with caching
 - **Modified Tests** - run only tests changed on your branch (granular line-level or whole modules)
-- **Failed Test Rerun** - re-run only previously failed tests
+- **Failed Test Rerun** - re-run only previously failed tests (shows coverage on pass when coverage is configured)
 - **Auto-fix** - configurable fix commands for format and credo issues
 - **Real-time Progress** - animated status lines with test counts
 - **Configurable** - `.check.json` for all settings, `builtin:` checks for Elixir-powered logic

@@ -20,6 +20,15 @@ As tests pass, they are removed from the still-failing list. When all pass, `sti
 
 `--all-failed` always reads from `failed_tests.txt` to re-run the full original list.
 
+### Coverage on pass
+
+When coverage is configured in `.check.json`, a passing failed-test rerun also prints a
+coverage report. Because `--failed` re-runs only the still-failing subset and each rerun
+overwrites `cover/failed.coverdata`, a full report is shown only when the complete failed
+list ran — i.e. on `--all-failed` or the first `--failed`. A later passing `--failed` prints
+an info hint to re-run `check --all-failed` instead. See
+[Configuration › Coverage](configuration.md#coverage-after-failed-test-reruns).
+
 ## Auto-fix Workflow
 
 Run checks first to store output, then apply fixes:

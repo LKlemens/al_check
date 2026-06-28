@@ -103,6 +103,22 @@ Use `{base_branch}` in shell commands - replaced at runtime with the configured 
 
 Use `--no-coverage` to disable coverage for a single run (overrides this config).
 
+### Coverage after failed-test reruns
+
+When coverage is configured, a passing failed-test rerun also prints coverage — but only
+when the data is complete. `--failed` re-runs only the *still-failing subset*
+(`.check/still_failing.txt`) and each rerun overwrites `cover/failed.coverdata` with that
+shrinking subset, so its coverage would be misleading. The full original failed list runs
+only on `--all-failed` and on the **first** `--failed` (before any `still_failing.txt`
+exists). So:
+
+- `--all-failed` passes → coverage report.
+- first `--failed` passes → coverage report.
+- a later `--failed` passes → info hint to re-run `check --all-failed` for a full report.
+
+Coverage and the hint appear only on a passing run, and only when coverage is enabled
+(`--no-coverage` skips both).
+
 Coverage results are cached based on `cover/*.coverdata` hashes. Re-running `check --coverage` is instant if test data hasn't changed.
 
 ## Fix commands
