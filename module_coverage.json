@@ -8,6 +8,7 @@
   "Check.Config": 90.38,
   "Check.ModifiedTestModules": 91.89,
   "Check.Summary": 92.31,
+  "Mix.Tasks.Check.Update": 93.75,
   "Mix.Tasks.Check.Build": 94.44,
   "Check.Tasks": 96.51,
   "Check.Runner": 97.14,
@@ -15,6 +16,5 @@
   "Check.Fix": 100.0,
   "Check.Partitions": 100.0,
   "Check.UI": 100.0,
-  "Check.Watch": 100.0,
-  "Mix.Tasks.Check.Update": 100.0
+  "Check.Watch": 100.0
 }
