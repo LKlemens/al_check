@@ -8,7 +8,7 @@ Create a `.check.json` in your project root (`check --init` generates one with d
 {
   "run": ["format", "compile", "compile_test", "dialyzer", "credo", "credo_strict", "test"],
   "fast": ["format", "compile", "compile_test", "credo", "credo_strict"],
-  "partitions": 3,
+  "partitions": 1,
   "max_concurrency": 10,
   "test_args": "--warnings-as-errors",
   "default_repeat": 100,
@@ -41,7 +41,7 @@ All fields are optional. CLI flags override config values.
 |-----|-------------|
 | `run` | Checks to run by default (without `--only` or `--fast`) |
 | `fast` | Checks to run with `--fast` |
-| `partitions` | Number of test partitions (default: 3) |
+| `partitions` | Number of test partitions (default: 1) |
 | `max_concurrency` | Max parallel checks (default: 10) |
 | `test_args` | Default args for `mix test` (default: `--warnings-as-errors`) |
 | `default_repeat` | Default `--repeat` value when flag is used without a number |

@@ -15,7 +15,7 @@ defmodule Check do
       check --only format,test             # Run only format and test
       check --only modified_tests          # Run only modified/new tests vs base branch
       check --only modified_test_modules   # Run whole test files modified vs base branch
-      check --partitions 2                 # Run tests with 2 partitions (default: 3)
+      check --partitions 2                 # Run tests with 2 partitions (default: 1)
       check --dir test/dir                 # Run tests only from specific directory
       check --dir test/foo,test/bar        # Run tests from multiple directories
       check --fix                          # Apply fixes from stored credo output
@@ -135,7 +135,7 @@ defmodule Check do
   defp run_command(:checks, opts, mock, config), do: run_checks(opts, mock, config)
 
   defp run_partition_cmd(opts, config) do
-    partitions = opts[:partitions] || config["partitions"] || 3
+    partitions = opts[:partitions] || config["partitions"] || 1
     Partitions.run_for_all(partition_cmd(opts, config), partitions)
   end
 
@@ -175,7 +175,7 @@ defmodule Check do
   end
 
   defp run_checks(opts, mock_mode, config) do
-    partitions = opts[:partitions] || config["partitions"] || 3
+    partitions = opts[:partitions] || config["partitions"] || 1
     max_concurrency = config["max_concurrency"] || 10
     test_dir = parse_dirs(opts[:dir])
     test_args = opts[:test_args] || config["test_args"]

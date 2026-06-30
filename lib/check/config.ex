@@ -38,7 +38,7 @@ defmodule Check.Config do
                     %{
                       "run" => @default_run,
                       "fast" => @default_fast,
-                      "partitions" => 3,
+                      "partitions" => 1,
                       "max_concurrency" => 10,
                       "test_args" => "--warnings-as-errors",
                       "default_repeat" => 100,

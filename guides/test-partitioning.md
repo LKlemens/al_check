@@ -1,10 +1,26 @@
 # Test Partitioning
 
-Tests run in parallel partitions (default: 3). Each partition uses its own database.
+Tests run in parallel partitions (default: 1). Each partition uses its own database.
 
 ```bash
 check --partitions 4  # Run with 4 partitions
 ```
+
+## Why 1 by default
+
+The default is `1` because going above it is **not** a drop-in change — more than
+one partition requires extra setup before tests will pass:
+
+- Each partition needs its own database, wired up via `MIX_TEST_PARTITION` in
+  `config/runtime.exs` (see [Database setup](#database-setup) below).
+- Your PostgreSQL `max_connections` must cover `N * pool_size` connections.
+- Those databases must be created/dropped per partition (`check --setup-db` / `--drop-db`).
+
+Defaulting to `1` keeps AlCheck working out of the box on a fresh project. Bump
+`partitions` in `.check.json` (or pass `--partitions N`) once you've done the
+setup described below. See
+[Running tests in partitions](https://klemens.blog/blog/tests-in-partitions/)
+for the full background.
 
 ## Database setup
 
