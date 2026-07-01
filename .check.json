@@ -59,7 +59,7 @@
     }
   ],
   "max_concurrency": 10,
-  "partitions": 1,
+  "partitions": 3,
   "run": [
     "format",
     "compile",
@@ -70,6 +70,7 @@
     "test"
   ],
   "test_args": "--warnings-as-errors",
+  "// update": "reshim tip: add your version manager's reshim in 'update' command, e.g. \"asdf reshim\" / \"mise reshim\" / \"rtx reshim\"",
   "update": [
     "mix deps.update al_check",
     "mix check.install"

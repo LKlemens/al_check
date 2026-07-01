@@ -91,7 +91,7 @@ defmodule Check.Config do
     if File.exists?(config_path) do
       IO.puts([IO.ANSI.format([:yellow, "#{config_path} already exists"])])
     else
-      File.write!(config_path, @default_config)
+      File.write!(config_path, with_update_comment(@default_config))
       IO.puts([IO.ANSI.format([:green, "Created #{config_path}\n"])])
 
       IO.puts([
@@ -104,6 +104,19 @@ defmodule Check.Config do
         ])
       ])
     end
+  end
+
+  @update_tip "reshim tip: add your version manager's reshim in 'update' command, " <>
+                "e.g. \"asdf reshim\" / \"mise reshim\" / \"rtx reshim\""
+
+  # JSON has no comments, so ship the reshim tip as a comment-key ("// update")
+  # on the line directly above "update". warn_unknown_keys ignores "//" keys.
+  defp with_update_comment(json) do
+    String.replace(
+      json,
+      ~r/^(\s*)"update":/m,
+      ~s(\\1"// update": #{Jason.encode!(@update_tip)},\n\\1"update":)
+    )
   end
 
   def parse_coverage(%{"mod" => mod} = config) do
@@ -196,7 +209,7 @@ defmodule Check.Config do
   defp warn_check_entries(_), do: :ok
 
   defp warn_keys(map, known, prefix) do
-    unknown = Map.keys(map) -- known
+    unknown = (Map.keys(map) -- known) |> Enum.reject(&String.starts_with?(&1, "//"))
 
     Enum.each(unknown, fn key ->
       IO.puts(:stderr, "Warning: Unknown config key \"#{prefix}#{key}\" in .check.json")
