@@ -38,6 +38,26 @@ config :my_app, MyApp.Repo, url: test_database_url
 
 This creates databases like `my_app_test1`, `my_app_test2`, etc.
 
+## Endpoint / server port
+
+If your tests boot a server (Phoenix endpoint, etc.), every partition binds the same
+port and collides. Offset the port by `MIX_TEST_PARTITION` in `config/runtime.exs`:
+
+```elixir
+# config/runtime.exs
+partition_port = String.to_integer(System.get_env("MIX_TEST_PARTITION", "0"))
+raw_http_port = String.to_integer(System.get_env("MY_APP_HTTP_PORT", "4002"))
+http_port = raw_http_port + partition_port
+
+config :my_app, MyAppWeb.Endpoint,
+  url: [host: "localhost"],
+  http: [port: http_port]
+```
+
+AlCheck sets `MIX_TEST_PARTITION` to `1, 2, 3…`, so endpoints bind `4003, 4004…`; the
+`"0"` fallback keeps a plain `mix test` on the base port. This is the other tweak
+(besides the database) that going past one partition requires.
+
 ## Avoiding DB connection limits
 
 With N partitions, your database needs at least `N * pool_size` connections.
