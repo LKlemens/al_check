@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.26] - 2026-07-01
+
+### Changed
+- Default test partitions is now `1` (was `3`). Running more than one
+  partition requires per-partition project config, so a single partition
+  works out of the box; raise `partitions` in `.check.json` (or pass
+  `--partitions N`) once that config is in place
+
+### Added
+- Warning shown after a failed multi-partition test run, explaining that
+  parallel tests need per-partition config (separate DB + HTTP port) and
+  linking the test-partitioning guide. Printed only on a partition failure —
+  silent when partitions pass or when a single partition fails
+- `check --init` now writes a `"// update"` comment above `"update"` in the
+  generated `.check.json`, hinting to add your version manager's reshim
+  (`asdf reshim` / `mise reshim` / `rtx reshim`). Comment-keys starting with
+  `//` are ignored by config validation
+- Test-partitioning guide: new "Endpoint / server port" section showing how
+  to offset the endpoint port per partition via `MIX_TEST_PARTITION`, so
+  tests that boot a server don't collide across partitions
+
 ## [0.1.24] - 2026-06-28
 
 ### Added

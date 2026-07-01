@@ -54,7 +54,7 @@ defmodule Check.Summary do
           :yellow,
           "\nTests failed across #{partition_count} partitions. Running tests in parallel requires " <>
             "a tweak to your configuration (separate DB + HTTP port per partition) — without it they fail.\n" <>
-            "See https://al-check.hexdocs.pm/0.1.25/test-partitioning.html"
+            "See https://al-check.hexdocs.pm/0.1.26/test-partitioning.html"
         ])
       ])
     end
