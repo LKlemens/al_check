@@ -85,6 +85,58 @@ defmodule Check.IntegrationTest do
     end
   end
 
+  describe "parallel partition warning" do
+    @coverage %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+
+    test "warns about per-partition config when a partition test fails" do
+      stub_halt()
+
+      tasks = [
+        {"Tests (1/2)", "sh", ["-c", "echo ok"]},
+        {"Tests (2/2)", "sh", ["-c", "echo 'boom' && exit 1"]}
+      ]
+
+      output =
+        capture_io(fn ->
+          {results, seconds} = Check.Runner.run_checks(tasks, nil, "", 10, false)
+          catch_throw(Check.Summary.print(results, seconds, tasks, @coverage))
+        end)
+
+      assert output =~ "Tests failed across 2 partitions"
+      assert output =~ "test-partitioning.html"
+    end
+
+    test "does not warn when all partitions pass" do
+      tasks = [
+        {"Tests (1/2)", "sh", ["-c", "echo ok"]},
+        {"Tests (2/2)", "sh", ["-c", "echo ok"]}
+      ]
+
+      output =
+        capture_io(fn ->
+          {results, seconds} = Check.Runner.run_checks(tasks, nil, "", 10, false)
+          Check.Summary.print(results, seconds, tasks, @coverage)
+        end)
+
+      refute output =~ "test-partitioning.html"
+      assert output =~ "All checks passed"
+    end
+
+    test "does not warn on a single-partition failure" do
+      stub_halt()
+
+      tasks = [{"Tests (1/1)", "sh", ["-c", "echo 'boom' && exit 1"]}]
+
+      output =
+        capture_io(fn ->
+          {results, seconds} = Check.Runner.run_checks(tasks, nil, "", 10, false)
+          catch_throw(Check.Summary.print(results, seconds, tasks, @coverage))
+        end)
+
+      refute output =~ "test-partitioning.html"
+    end
+  end
+
   describe "runner" do
     test "run_checks executes regular tasks in parallel" do
       tasks = [{"Echo1", "echo", ["hello"]}, {"Echo2", "echo", ["world"]}]

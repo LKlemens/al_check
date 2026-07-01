@@ -15,6 +15,10 @@ defmodule Check.GitTest do
       assert Git.committed_diff_range("main") == ["main...HEAD"]
     end
 
+    test "foo" do
+      assert 2 == 3
+    end
+
     test "uses HEAD~1...HEAD when on the base branch with a parent commit" do
       stub(System, :cmd, fn
         "git", ["rev-parse", "--abbrev-ref", "HEAD"], _opts -> {"main\n", 0}

@@ -232,6 +232,26 @@ defmodule Check.ConfigTest do
     end
 
     @tag :tmp_dir
+    test "writes a reshim comment directly above \"update\"", %{tmp_dir: tmp_dir} do
+      original_dir = File.cwd!()
+      File.cd!(tmp_dir)
+
+      try do
+        ExUnit.CaptureIO.capture_io(fn -> Config.init() end)
+
+        content = tmp_dir |> Path.join(".check.json") |> File.read!()
+        assert content =~ ~s("// update": "reshim tip:)
+        assert content =~ ~r/"\/\/ update":.*\n\s*"update":/
+
+        # Comment-key stays valid JSON and does not trigger an unknown-key warning.
+        warnings = ExUnit.CaptureIO.capture_io(:stderr, fn -> Config.load() end)
+        refute warnings =~ "Unknown config key"
+      after
+        File.cd!(original_dir)
+      end
+    end
+
+    @tag :tmp_dir
     test "does not overwrite existing config", %{tmp_dir: tmp_dir} do
       original_dir = File.cwd!()
       path = Path.join(tmp_dir, ".check.json")

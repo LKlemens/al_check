@@ -39,18 +39,39 @@ defmodule Check.Summary do
     failed_checks = Enum.filter(results, fn {_name, status, _output} -> status != 0 end)
 
     IO.puts("\nCompleted in #{total_seconds}s")
-    report_result(failed_checks, coverage_failed?)
+    report_result(failed_checks, coverage_failed?, results, tests_failed?)
   end
 
-  defp report_result([], false) do
+  # Parallel test failures are almost always caused by missing per-partition config
+  # (shared DB / shared port), so nudge only when a multi-partition run fails.
+  defp maybe_warn_parallel_partitions(results, true) do
+    partition_count =
+      Enum.count(results, fn {name, _status, _output} -> String.starts_with?(name, "Tests (") end)
+
+    if partition_count > 1 do
+      IO.puts([
+        IO.ANSI.format([
+          :yellow,
+          "\nTests failed across #{partition_count} partitions. Running tests in parallel requires " <>
+            "a tweak to your configuration (separate DB + HTTP port per partition) — without it they fail.\n" <>
+            "See https://al-check.hexdocs.pm/0.1.25/test-partitioning.html"
+        ])
+      ])
+    end
+  end
+
+  defp maybe_warn_parallel_partitions(_results, false), do: :ok
+
+  defp report_result([], false, _results, _tests_failed?) do
     IO.puts([IO.ANSI.format([:green, "\n✓ All checks passed!"])])
   end
 
-  defp report_result([], true), do: System.halt(1)
+  defp report_result([], true, _results, _tests_failed?), do: System.halt(1)
 
-  defp report_result(failed_checks, _coverage_failed?) do
+  defp report_result(failed_checks, _coverage_failed?, results, tests_failed?) do
     IO.puts([IO.ANSI.format([:red, "\n✗ #{length(failed_checks)} check(s) failed"])])
     print_failure_details(failed_checks)
+    maybe_warn_parallel_partitions(results, tests_failed?)
     System.halt(1)
   end
 
