@@ -52,8 +52,8 @@ defmodule Check.Summary do
       IO.puts([
         IO.ANSI.format([
           :yellow,
-          "\nTests failed across #{partition_count} partitions. Running tests in parallel requires " <>
-            "a tweak to your configuration (separate DB + HTTP port per partition) — without it they fail.\n" <>
+          "\nPlease be aware that running tests in parallel requires " <>
+            "a tweak to your configuration (separate DB + HTTP port per partition) - without it they fail.\n" <>
             "See https://al-check.hexdocs.pm/0.1.26/test-partitioning.html"
         ])
       ])
@@ -102,7 +102,7 @@ defmodule Check.Summary do
       IO.puts([IO.ANSI.format([:yellow, "#{warning_count} warning(s) detected"])])
     end
 
-    IO.puts([IO.ANSI.format([:yellow, "\nFull test output saved to check_tests.txt"])])
+    IO.puts([IO.ANSI.format([:yellow, "\nFull test output saved to .check/check_tests.txt"])])
   end
 
   defp print_check_output(output) do
@@ -132,9 +132,11 @@ defmodule Check.Summary do
   end
 
   def extract_test_summary(output) when is_binary(output) do
-    case Regex.run(~r/(\d+ tests?, \d+ failures?(, \d+ excluded)?.*)/m, output) do
-      [_, summary | _] -> summary
-      nil -> "See .check/check_tests.txt for details"
+    # Take the real column-0 summary line (the last one), skipping indented
+    # "N tests, M failures" fragments printed inside failure blocks.
+    case Regex.scan(~r/^\d[^\n]*\d+ failures?[^\n]*/m, output) do
+      [] -> "See .check/check_tests.txt for details"
+      matches -> matches |> List.last() |> List.first()
     end
   end
 

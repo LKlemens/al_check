@@ -67,7 +67,7 @@ defmodule Check.Failed do
   def coverage_threshold_failure?(output) do
     (String.contains?(output, "Expected minimum coverage") or
        String.contains?(output, "Coverage test failed, threshold not met")) and
-      Regex.match?(~r/\d+ tests?, 0 failures/, output)
+      Regex.match?(~r/^\d.*, 0 failures?\b/m, output)
   end
 
   # -- Private --

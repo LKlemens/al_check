@@ -102,7 +102,9 @@ defmodule Check.IntegrationTest do
           catch_throw(Check.Summary.print(results, seconds, tasks, @coverage))
         end)
 
-      assert output =~ "Tests failed across 2 partitions"
+      assert output =~
+               "Please be aware that running tests in parallel requires a tweak to your configuration"
+
       assert output =~ "test-partitioning.html"
     end
 
@@ -193,10 +195,11 @@ defmodule Check.IntegrationTest do
       assert output =~ "Test command"
     end
 
-    test "partition task with warnings returns :warnings status" do
+    test "partition task with warnings-as-errors (non-zero exit) returns :warnings status" do
       tasks = [
         {"Tests (1/1)", "sh",
-         ["-c", "echo 'warning: unused\n.\n\nFinished in 0.1s\n1 test, 0 failures'"], 1, 1}
+         ["-c", "echo 'warning: unused\n.\n\nFinished in 0.1s\n1 test, 0 failures'; exit 1"], 1,
+         1}
       ]
 
       capture_io(fn ->
@@ -209,9 +212,9 @@ defmodule Check.IntegrationTest do
   end
 
   describe "runner - determine_final_status" do
-    test "returns :warnings when tests pass but warnings detected (status 0)" do
+    test "returns 0 when mix exits 0 even with warnings (no --warnings-as-errors)" do
       output = "10 tests, 0 failures\nwarning: unused variable"
-      assert Check.Runner.determine_final_status(0, output) == :warnings
+      assert Check.Runner.determine_final_status(0, output) == 0
     end
 
     test "returns :warnings when mix exits non-zero but tests pass with warnings" do

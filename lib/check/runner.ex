@@ -223,15 +223,26 @@ defmodule Check.Runner do
   end
 
   def determine_final_status(status, output) do
-    tests_passed? = Regex.match?(~r/\d+ tests?, 0 failures/, output)
+    # Anchor on the real column-0 ExUnit summary line ("N tests, M failures", possibly
+    # prefixed with doctests/properties). Fragments printed inside failure blocks are
+    # indented, so they can't masquerade as the summary and flip the classification.
+    tests_failed? = Regex.match?(~r/^\d.*, [1-9]\d* failures?\b/m, output)
+    tests_passed? = Regex.match?(~r/^\d.*, 0 failures?\b/m, output)
+    warnings? = Failed.detect_warnings_in_output(output)
 
     cond do
-      status == 0 and Failed.detect_warnings_in_output(output) -> :warnings
-      status != 0 and tests_passed? and Failed.detect_warnings_in_output(output) -> :warnings
+      tests_failed? -> failure_status(status)
+      # Warnings only fail the run when mix itself treated them as errors
+      # (non-zero exit from `--warnings-as-errors`). A clean exit stays a pass,
+      # even if the output happens to contain "warning:".
+      status != 0 and tests_passed? and warnings? -> :warnings
       status != 0 and Failed.coverage_threshold_failure?(output) -> 0
       true -> status
     end
   end
+
+  defp failure_status(0), do: 1
+  defp failure_status(status), do: status
 
   defp collect_and_stream_output(port, acc) do
     receive do

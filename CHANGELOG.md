@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.27] - 2026-07-01
+
+### Fixed
+- Warnings no longer fail a run unless `--warnings-as-errors` is actually set.
+  A partition was tagged `WARNINGS` (a failing status) whenever its output
+  merely contained `warning:`, even when `mix test` exited `0`. Now the mix
+  exit code decides: a clean exit stays `[OK]`; warnings only fail when mix
+  itself treated them as errors (non-zero exit)
+- Test status/summary detection now anchors on the real column-0 ExUnit summary
+  line instead of matching a summary-like string anywhere in the output. A
+  genuine failure whose output embeds fragments like `73 tests, 0 failures` or
+  `warning:` (e.g. printed inside a failure block) is no longer misclassified as
+  passing/`WARNINGS`, and the displayed summary line is no longer garbled. Also
+  handles the `N doctests, M tests, K failures` summary shape
+- Failing tests take priority over warnings when classifying a partition's
+  status
+
 ## [0.1.26] - 2026-07-01
 
 ### Changed

@@ -123,8 +123,8 @@ defmodule Check.RunnerTest do
   end
 
   describe "determine_final_status/2" do
-    test "returns :warnings when status 0 with warnings" do
-      assert Runner.determine_final_status(0, "warning: unused") == :warnings
+    test "returns 0 when status 0 even with warnings (no --warnings-as-errors)" do
+      assert Runner.determine_final_status(0, "warning: unused") == 0
     end
 
     test "returns :warnings when status non-zero but tests pass with warnings" do
