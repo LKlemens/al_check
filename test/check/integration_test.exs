@@ -429,6 +429,8 @@ defmodule Check.IntegrationTest do
 
       assert output =~ "5 tests, 1 failure"
       assert output =~ "Full test output saved to .check/check_tests.txt"
+      assert output =~ "check --only test --verbose-sections"
+      assert output =~ "check --watch"
     end
   end
 

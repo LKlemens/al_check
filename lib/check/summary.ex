@@ -75,7 +75,7 @@ defmodule Check.Summary do
           :yellow,
           "\nPlease be aware that running tests in parallel requires " <>
             "a tweak to your configuration (separate DB + HTTP port per partition) - without it they fail.\n" <>
-            "See https://al-check.hexdocs.pm/0.1.26/test-partitioning.html"
+            "See https://al-check.hexdocs.pm/0.1.28/test-partitioning.html"
         ])
       ])
     end
@@ -135,6 +135,15 @@ defmodule Check.Summary do
     end
 
     IO.puts([IO.ANSI.format([:yellow, "\nFull test output saved to .check/check_tests.txt"])])
+
+    IO.puts([
+      IO.ANSI.format([
+        :cyan,
+        "To view error logs: check --watch (live), or re-run with " <>
+          "check --only test --verbose-sections (grouped) / --verbose (streamed), " <>
+          "or rerun failed tests with check --failed"
+      ])
+    ])
   end
 
   defp print_check_output(output) do

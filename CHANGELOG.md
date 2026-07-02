@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.27] - 2026-07-01
+## [0.1.28] - 2026-07-02
 
 ### Added
 - Configurable `test_output` (`.check.json`) + `--verbose-sections` flag. Because
@@ -10,6 +10,12 @@
   output for failed sections only — same as `--verbose-sections`), and
   `{"sections": "always"}` (every section — same as `--verbose-sections-always`).
   CLI flags override the config
+- Failed test partitions now print a hint on how to view error logs after
+  "Full test output saved to .check/check_tests.txt": `check --watch` (live),
+  re-run with `check --only test --verbose-sections` / `--verbose`, or rerun
+  failed tests with `check --failed`
+
+## [0.1.27] - 2026-07-01
 
 ### Fixed
 - Warnings no longer fail a run unless `--warnings-as-errors` is actually set.
