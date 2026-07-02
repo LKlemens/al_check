@@ -42,6 +42,7 @@ defmodule Check.Config do
                       "max_concurrency" => 10,
                       "test_args" => "--warnings-as-errors",
                       "default_repeat" => 100,
+                      "test_output" => "status",
                       "fix" => [
                         %{"run" => "mix format"},
                         %{"run" => "mix recode", "files" => ".check/credo*.txt"}
@@ -130,6 +131,18 @@ defmodule Check.Config do
 
   def parse_coverage(_), do: %{mod: false, limit: nil, html: false, baseline_cmd: nil}
 
+  @doc """
+  Parse the `test_output` config value into an output mode.
+
+  Accepts `"status"` (default), `"verbose"`, `"sections"` (shorthand for
+  `{:sections, :on_failure}`), or `%{"sections" => "on_failure" | "always"}`.
+  """
+  def parse_test_output("verbose"), do: :verbose
+  def parse_test_output("sections"), do: {:sections, :on_failure}
+  def parse_test_output(%{"sections" => "always"}), do: {:sections, :always}
+  def parse_test_output(%{"sections" => "on_failure"}), do: {:sections, :on_failure}
+  def parse_test_output(_), do: :status
+
   def parse_check_config(key, %{"run" => "builtin:" <> builtin} = config) do
     name = config["name"] || humanize_key(key)
     {name, :builtin, [builtin]}
@@ -181,7 +194,7 @@ defmodule Check.Config do
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  @known_keys ~w(run fast partitions max_concurrency test_args default_repeat coverage checks base_branch fix db_setup db_drop update)
+  @known_keys ~w(run fast partitions max_concurrency test_args default_repeat test_output coverage checks base_branch fix db_setup db_drop update)
   @known_coverage_keys ~w(mod limit html baseline_cmd)
   @known_check_keys ~w(name run)
 

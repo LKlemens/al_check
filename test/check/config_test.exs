@@ -3,6 +3,21 @@ defmodule Check.ConfigTest do
 
   alias Check.Config
 
+  describe "parse_test_output/1" do
+    test "defaults to :status" do
+      assert Config.parse_test_output(nil) == :status
+      assert Config.parse_test_output("status") == :status
+      assert Config.parse_test_output("bogus") == :status
+    end
+
+    test "parses verbose and sections shapes" do
+      assert Config.parse_test_output("verbose") == :verbose
+      assert Config.parse_test_output("sections") == {:sections, :on_failure}
+      assert Config.parse_test_output(%{"sections" => "on_failure"}) == {:sections, :on_failure}
+      assert Config.parse_test_output(%{"sections" => "always"}) == {:sections, :always}
+    end
+  end
+
   describe "parse_coverage/1" do
     test "parses full config" do
       assert Config.parse_coverage(%{"mod" => "native", "limit" => 80, "html" => true}) ==

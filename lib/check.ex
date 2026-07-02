@@ -24,6 +24,8 @@ defmodule Check do
       check --watch                        # Monitor test partition files in real-time
       check --test-args '--exclude slow'   # Replace default --warnings-as-errors with custom args
       check --verbose                     # Print test output directly instead of partition status
+      check --verbose-sections            # Print each failed section's full output (grouped, not interleaved)
+      check --verbose-sections-always     # Print every section's full output (grouped, not interleaved)
       check --coverage                    # Show coverage report (cached if unchanged)
       check --full-coverage-output        # Also print the entire per-module coverage table
       check --with-html                   # Force HTML coverage report (overrides "html": false)
@@ -190,14 +192,24 @@ defmodule Check do
 
     prepare_test_run(tasks, test_args, coverage)
 
-    verbose = opts[:verbose] || false
+    output_mode = resolve_output_mode(opts, config)
     test_cmd = Tasks.build_test_cmd(test_dir, test_args, repeat, partitions, coverage)
     test_opts = %{repeat: repeat, test_args: test_args}
 
     {results, total_seconds} =
-      Runner.run_checks(tasks, test_opts, test_cmd, max_concurrency, verbose)
+      Runner.run_checks(tasks, test_opts, test_cmd, max_concurrency, output_mode == :verbose)
 
-    Summary.print(results, total_seconds, tasks, coverage)
+    Summary.print(results, total_seconds, tasks, coverage, output_mode)
+  end
+
+  # CLI flags win over the `test_output` config value.
+  defp resolve_output_mode(opts, config) do
+    cond do
+      opts[:verbose_sections_always] -> {:sections, :always}
+      opts[:verbose_sections] -> {:sections, :on_failure}
+      opts[:verbose] -> :verbose
+      true -> Config.parse_test_output(config["test_output"])
+    end
   end
 
   defp prepare_test_run(tasks, test_args, coverage) do
@@ -228,6 +240,8 @@ defmodule Check do
           dir: :string,
           watch: :boolean,
           verbose: :boolean,
+          verbose_sections: :boolean,
+          verbose_sections_always: :boolean,
           repeat: :integer,
           help: :boolean,
           init: :boolean,
@@ -271,7 +285,7 @@ defmodule Check do
   end
 
   @allowed_invalid ~w(--repeat)
-  @valid_flags ~w(--only --fix --fast --partitions --failed --all-failed --dir --watch --verbose --quiet --repeat --help --init --version --coverage --full-coverage-output --with-html --no-coverage --test-args --setup-db --db-setup --drop-db --db-drop --for-partitions)
+  @valid_flags ~w(--only --fix --fast --partitions --failed --all-failed --dir --watch --verbose --verbose-sections --verbose-sections-always --quiet --repeat --help --init --version --coverage --full-coverage-output --with-html --no-coverage --test-args --setup-db --db-setup --drop-db --db-drop --for-partitions)
 
   defp reject_invalid_flags(invalid) do
     unknown =

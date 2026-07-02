@@ -12,6 +12,7 @@ Create a `.check.json` in your project root (`check --init` generates one with d
   "max_concurrency": 10,
   "test_args": "--warnings-as-errors",
   "default_repeat": 100,
+  "test_output": "status",
   "base_branch": "main",
   "coverage": {
     "mod": "native",
@@ -45,6 +46,7 @@ All fields are optional. CLI flags override config values.
 | `max_concurrency` | Max parallel checks (default: 10) |
 | `test_args` | Default args for `mix test` (default: `--warnings-as-errors`) |
 | `default_repeat` | Default `--repeat` value when flag is used without a number |
+| `test_output` | How task output is shown (default: `"status"`) — see below |
 | `base_branch` | Git branch for modified test detection (auto-detects `main`/`master` if not set) |
 | `checks` | Custom check definitions (replaces built-in checks, test partitions always added) |
 | `fix` | Commands to run with `--fix` |
@@ -52,6 +54,29 @@ All fields are optional. CLI flags override config values.
 | `db_setup` | Command for `--setup-db` / `--db-setup` (default: `mix ecto.setup`) |
 | `db_drop` | Command for `--drop-db` / `--db-drop` (default: `mix ecto.drop`) |
 | `update` | Commands for `mix check.update` (default: `["mix deps.update al_check", "mix check.install"]`) |
+
+## Test output
+
+`test_output` controls how each task's output is shown. Because tasks run
+concurrently, live-streaming everything (`verbose`) interleaves output from
+different partitions. The `sections` modes instead print each task's **full**
+output as a contiguous block once it finishes, so nothing interleaves.
+
+| Value | Behaviour |
+|-------|-----------|
+| `"status"` (default) | Live status board; failed test partitions show the summary line plus a pointer to `.check/check_tests.txt` |
+| `"verbose"` | Stream every task's output live (equivalent to `--verbose`) |
+| `"sections"` | Shorthand for `{"sections": "on_failure"}` |
+| `{"sections": "on_failure"}` | Status board during the run; print the full output block for each **failed** section at the end (equivalent to `--verbose-sections`) |
+| `{"sections": "always"}` | Status board during the run; print the full output block for **every** section at the end (equivalent to `--verbose-sections-always`) |
+
+```json
+"test_output": {"sections": "on_failure"}
+```
+
+CLI flags override this: `--verbose` forces `verbose`, `--verbose-sections` forces
+`{"sections": "on_failure"}`, and `--verbose-sections-always` forces
+`{"sections": "always"}`.
 
 ## Custom checks
 

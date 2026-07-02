@@ -1,9 +1,9 @@
 defmodule Check.Summary do
   @moduledoc "Results summary, failure details, and output persistence."
 
-  alias Check.{Coverage, Failed, Tasks}
+  alias Check.{Coverage, Failed, Tasks, UI}
 
-  def print(results, total_seconds, tasks, coverage) do
+  def print(results, total_seconds, tasks, coverage, output_mode \\ :status) do
     IO.write("\n")
 
     save_credo_outputs(results)
@@ -39,7 +39,28 @@ defmodule Check.Summary do
     failed_checks = Enum.filter(results, fn {_name, status, _output} -> status != 0 end)
 
     IO.puts("\nCompleted in #{total_seconds}s")
-    report_result(failed_checks, coverage_failed?, results, tests_failed?)
+    report_result(failed_checks, coverage_failed?, results, tests_failed?, output_mode)
+  end
+
+  # `{:sections, policy}` prints each section's full output as a contiguous block:
+  # `:always` for every section, `:on_failure` for failed ones only. No-op for
+  # `:status` / `:verbose`.
+  defp print_sections_output(results, {:sections, policy}) do
+    sections =
+      if policy == :always,
+        do: results,
+        else: Enum.filter(results, fn {_name, status, _output} -> status != 0 end)
+
+    Enum.each(sections, &print_section_block/1)
+  end
+
+  defp print_sections_output(_results, _output_mode), do: :ok
+
+  defp print_section_block({name, status, output}) do
+    {icon, color, label} = UI.format_task_status(status, {0, 0})
+    IO.puts([IO.ANSI.format([color, :bright, "\n#{icon} #{name} #{label}"])])
+    IO.puts(String.duplicate("-", 40))
+    print_check_output(output)
   end
 
   # Parallel test failures are almost always caused by missing per-partition config
@@ -62,15 +83,26 @@ defmodule Check.Summary do
 
   defp maybe_warn_parallel_partitions(_results, false), do: :ok
 
-  defp report_result([], false, _results, _tests_failed?) do
+  defp report_result([], false, results, _tests_failed?, output_mode) do
+    print_sections_output(results, output_mode)
     IO.puts([IO.ANSI.format([:green, "\n✓ All checks passed!"])])
   end
 
-  defp report_result([], true, _results, _tests_failed?), do: System.halt(1)
+  defp report_result([], true, results, _tests_failed?, output_mode) do
+    print_sections_output(results, output_mode)
+    System.halt(1)
+  end
 
-  defp report_result(failed_checks, _coverage_failed?, results, tests_failed?) do
+  defp report_result(failed_checks, _coverage_failed?, results, tests_failed?, output_mode) do
     IO.puts([IO.ANSI.format([:red, "\n✗ #{length(failed_checks)} check(s) failed"])])
-    print_failure_details(failed_checks)
+
+    # In sections mode the full per-section blocks are printed instead of the
+    # compact failure details.
+    case output_mode do
+      {:sections, _policy} -> print_sections_output(results, output_mode)
+      _ -> print_failure_details(failed_checks)
+    end
+
     maybe_warn_parallel_partitions(results, tests_failed?)
     System.halt(1)
   end

@@ -64,6 +64,26 @@ defmodule Check.IntegrationTest do
 
       assert output =~ "All checks passed"
     end
+
+    test "--verbose-sections-always prints passing sections' full output" do
+      output =
+        capture_io(fn ->
+          Check.main(["--only", "format", "--verbose-sections-always", "mock"])
+        end)
+
+      assert output =~ "Format check passed"
+      assert output =~ "All checks passed"
+    end
+
+    test "--verbose-sections stays quiet for passing sections" do
+      output =
+        capture_io(fn ->
+          Check.main(["--only", "format", "--verbose-sections", "mock"])
+        end)
+
+      refute output =~ "Format check passed"
+      assert output =~ "All checks passed"
+    end
   end
 
   describe "failure flow" do
@@ -353,6 +373,62 @@ defmodule Check.IntegrationTest do
 
       content = File.read!(".check/failed_tests.txt")
       assert content =~ "test/my_app/foo_test.exs:42"
+    end
+  end
+
+  describe "summary - test_output sections" do
+    @sec_cov %{mod: false, limit: nil, html: false, baseline_cmd: nil}
+
+    test "on_failure prints full output for failed sections only" do
+      stub_halt()
+
+      results = [
+        {"Tests (1/2)", 0, "..\nFinished in 0.1s\n5 tests, 0 failures"},
+        {"Tests (2/2)", 1,
+         "  1) test boom (FooTest)\n     test/foo_test.exs:9\n\n5 tests, 1 failure"}
+      ]
+
+      tasks = [{"Tests (1/2)", "sh", ["-c", "x"]}, {"Tests (2/2)", "sh", ["-c", "x"]}]
+
+      output =
+        capture_io(fn ->
+          catch_throw(
+            Check.Summary.print(results, 1.0, tasks, @sec_cov, {:sections, :on_failure})
+          )
+        end)
+
+      assert output =~ "1) test boom (FooTest)"
+      assert output =~ "Tests (2/2)"
+      refute output =~ "Tests (1/2)"
+    end
+
+    test "always prints full output for every section" do
+      results = [{"Tests (1/1)", 0, "..\nFinished in 0.1s\n7 tests, 0 failures"}]
+      tasks = [{"Tests (1/1)", "sh", ["-c", "x"]}]
+
+      output =
+        capture_io(fn ->
+          Check.Summary.print(results, 1.0, tasks, @sec_cov, {:sections, :always})
+        end)
+
+      assert output =~ "Tests (1/1)"
+      assert output =~ "7 tests, 0 failures"
+      assert output =~ "All checks passed"
+    end
+
+    test "default mode shows summary + file pointer, not the full block" do
+      stub_halt()
+
+      results = [{"Tests (1/1)", 1, "  1) test boom\n\n5 tests, 1 failure"}]
+      tasks = [{"Tests (1/1)", "sh", ["-c", "x"]}]
+
+      output =
+        capture_io(fn ->
+          catch_throw(Check.Summary.print(results, 1.0, tasks, @sec_cov))
+        end)
+
+      assert output =~ "5 tests, 1 failure"
+      assert output =~ "Full test output saved to .check/check_tests.txt"
     end
   end
 

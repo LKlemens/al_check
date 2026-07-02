@@ -2,6 +2,15 @@
 
 ## [0.1.27] - 2026-07-01
 
+### Added
+- Configurable `test_output` (`.check.json`) + `--verbose-sections` flag. Because
+  tasks run concurrently, `--verbose` interleaves their output; the new `sections`
+  modes instead print each task's full output as a contiguous block at the end.
+  Values: `"status"` (default), `"verbose"`, `{"sections": "on_failure"}` (full
+  output for failed sections only — same as `--verbose-sections`), and
+  `{"sections": "always"}` (every section — same as `--verbose-sections-always`).
+  CLI flags override the config
+
 ### Fixed
 - Warnings no longer fail a run unless `--warnings-as-errors` is actually set.
   A partition was tagged `WARNINGS` (a failing status) whenever its output
