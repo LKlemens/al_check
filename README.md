@@ -22,6 +22,11 @@ A parallel code quality checker for Elixir projects. Runs format, compile, credo
 - **Real-time Progress** - animated status lines with test counts
 - **Configurable** - `.check.json` for all settings, `builtin:` checks for Elixir-powered logic
 
+> **Warning:** Running tests in parallel (more than one partition) requires a tweak
+> to your configuration - each partition needs its own database and HTTP port.
+> Without it they fail. See the [Test Partitioning](guides/test-partitioning.md) guide.
+
+
 ## Installation
 
 Add `al_check` to your list of dependencies in `mix.exs`:

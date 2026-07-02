@@ -8,7 +8,7 @@ check --partitions 4  # Run with 4 partitions
 
 ## Why 1 by default
 
-The default is `1` because going above it is **not** a drop-in change — more than
+The default is `1` because going above it is **not** a drop-in change - more than
 one partition requires extra setup before tests will pass:
 
 - Each partition needs its own database, wired up via `MIX_TEST_PARTITION` in

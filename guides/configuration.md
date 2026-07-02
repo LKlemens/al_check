@@ -46,7 +46,7 @@ All fields are optional. CLI flags override config values.
 | `max_concurrency` | Max parallel checks (default: 10) |
 | `test_args` | Default args for `mix test` (default: `--warnings-as-errors`) |
 | `default_repeat` | Default `--repeat` value when flag is used without a number |
-| `test_output` | How task output is shown (default: `"status"`) — see below |
+| `test_output` | How task output is shown (default: `"status"`) - see below |
 | `base_branch` | Git branch for modified test detection (auto-detects `main`/`master` if not set) |
 | `checks` | Custom check definitions (replaces built-in checks, test partitions always added) |
 | `fix` | Commands to run with `--fix` |
@@ -130,7 +130,7 @@ Use `--no-coverage` to disable coverage for a single run (overrides this config)
 
 ### Coverage after failed-test reruns
 
-When coverage is configured, a passing failed-test rerun also prints coverage — but only
+When coverage is configured, a passing failed-test rerun also prints coverage - but only
 when the data is complete. `--failed` re-runs only the *still-failing subset*
 (`.check/still_failing.txt`) and each rerun overwrites `cover/failed.coverdata` with that
 shrinking subset, so its coverage would be misleading. The full original failed list runs
