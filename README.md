@@ -26,6 +26,7 @@ A parallel code quality checker for Elixir projects. Runs format, compile, credo
 > to your configuration - each partition needs its own database and HTTP port.
 > Without it they fail. See the [Test Partitioning](guides/test-partitioning.md) guide.
 
+*Note: I outsource the typing to an LLM, not the thinking.*
 
 ## Installation
 
